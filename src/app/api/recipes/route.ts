@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const familyId = (session as any).familyId as string | undefined;
+  const familyId = session.familyId ?? undefined;
 
   if (!familyId) {
     return NextResponse.json({ recipes: [] });
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const familyId = (session as any).familyId as string | undefined;
+  const familyId = session.familyId ?? undefined;
 
   if (!familyId) {
     return NextResponse.json({ error: "No family found" }, { status: 400 });
