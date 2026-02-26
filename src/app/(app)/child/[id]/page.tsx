@@ -7,6 +7,7 @@ import { NutrientDetail } from "@/components/dashboard/nutrient-detail";
 import { MealList } from "@/components/dashboard/meal-list";
 import { WeeklyChart } from "@/components/dashboard/weekly-chart";
 import { WeeklySummary } from "@/components/dashboard/weekly-summary";
+import { WeeklyInsight } from "@/components/dashboard/weekly-insight";
 import type { DayData } from "@/components/dashboard/weekly-chart";
 
 interface ChildDetail {
@@ -337,6 +338,9 @@ export default function ChildDetailPage() {
 
           {weeklyData && !weeklyLoading && (
             <>
+              {/* AI weekly insight */}
+              <WeeklyInsight childId={id} childName={child.name} />
+
               {/* 7-day summary tiles */}
               <WeeklySummary
                 weeklyAveragePercent={weeklyData.weeklyAveragePercent}
