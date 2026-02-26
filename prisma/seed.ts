@@ -8,10 +8,11 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  // Clear existing data (in reverse dependency order)
-  await prisma.dailyTarget.deleteMany();
-  await prisma.child.deleteMany();
-  await prisma.family.deleteMany();
+  // Clear existing data using CASCADE to handle all FK constraints
+  await pool.query(`
+    TRUNCATE TABLE "FoodPreference", "MealLog", "DailyTarget", "ChatMessage", "Child", "User", "Family"
+    RESTART IDENTITY CASCADE
+  `);
 
   // 1. Create the Park family
   const family = await prisma.family.create({
