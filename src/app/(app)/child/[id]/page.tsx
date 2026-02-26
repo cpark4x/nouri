@@ -5,6 +5,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { NutrientDetail } from "@/components/dashboard/nutrient-detail";
 import { MealList } from "@/components/dashboard/meal-list";
+import { WeeklyChart } from "@/components/dashboard/weekly-chart";
+import { WeeklySummary } from "@/components/dashboard/weekly-summary";
+import type { DayData } from "@/components/dashboard/weekly-chart";
 
 interface ChildDetail {
   id: string;
@@ -27,6 +30,23 @@ interface ChildDetail {
     nutrients: { nutrient: string; amount: number; unit: string }[];
   }[];
 }
+
+interface WeeklyData {
+  child: {
+    id: string;
+    name: string;
+    targets: Record<string, { target: number; unit: string }>;
+  };
+  days: DayData[];
+  weeklyAverages: Record<string, number>;
+  weeklyAveragePercent: Record<string, number>;
+}
+
+const MORE_NUTRIENTS: { key: string; label: string }[] = [
+  { key: "protein", label: "Protein" },
+  { key: "calcium", label: "Calcium" },
+  { key: "vitaminD", label: "Vitamin D" },
+];
 
 function ProfileSkeleton() {
   return (
@@ -67,12 +87,33 @@ function ProfileSkeleton() {
   );
 }
 
+function WeeklyLoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700" />
+    </div>
+  );
+}
+
 export default function ChildDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [child, setChild] = useState<ChildDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"today" | "thisWeek">("today");
+
+  // Weekly data state
+  const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
+  const [weeklyLoading, setWeeklyLoading] = useState(false);
+  const [weeklyError, setWeeklyError] = useState<string | null>(null);
+  const [weeklyFetched, setWeeklyFetched] = useState(false);
+
+  // Collapsible more-nutrients section
+  const [showMoreCharts, setShowMoreCharts] = useState(false);
+
+  // Fetch today's data
   useEffect(() => {
     async function fetchChild() {
       try {
@@ -92,6 +133,31 @@ export default function ChildDetailPage() {
     }
     fetchChild();
   }, [id]);
+
+  // Lazy-fetch weekly data when the "This Week" tab is first activated
+  useEffect(() => {
+    if (activeTab !== "thisWeek" || weeklyFetched) return;
+
+    async function fetchWeekly() {
+      setWeeklyLoading(true);
+      try {
+        const res = await fetch(`/api/child/${id}/weekly`);
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setWeeklyError(data.error ?? "Failed to load weekly data");
+          return;
+        }
+        const data = await res.json();
+        setWeeklyData(data);
+      } catch {
+        setWeeklyError("Failed to load weekly data");
+      } finally {
+        setWeeklyLoading(false);
+        setWeeklyFetched(true);
+      }
+    }
+    fetchWeekly();
+  }, [activeTab, id, weeklyFetched]);
 
   if (loading) {
     return (
@@ -147,7 +213,7 @@ export default function ChildDetailPage() {
       </div>
 
       {/* Profile Header */}
-      <div className="mb-8 flex items-start gap-4">
+      <div className="mb-6 flex items-start gap-4">
         {child.photoUrl ? (
           <img
             src={child.photoUrl}
@@ -179,21 +245,125 @@ export default function ChildDetailPage() {
         </div>
       </div>
 
-      {/* Nutrition Section */}
-      <section className="mb-8 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <NutrientDetail
-          targets={child.targets}
-          todayIntake={child.todayIntake}
-        />
-      </section>
+      {/* Tabs */}
+      <div className="mb-6 flex gap-1 rounded-lg bg-gray-100 p-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab("today")}
+          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "today"
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          Today
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("thisWeek")}
+          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "thisWeek"
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          This Week
+        </button>
+      </div>
 
-      {/* Meals Section */}
-      <section>
-        <h3 className="mb-3 text-sm font-semibold text-gray-900">
-          Today&apos;s Meals
-        </h3>
-        <MealList meals={child.todayMeals} />
-      </section>
+      {/* Today Tab */}
+      {activeTab === "today" && (
+        <>
+          {/* Nutrition Section */}
+          <section className="mb-8 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <NutrientDetail
+              targets={child.targets}
+              todayIntake={child.todayIntake}
+            />
+          </section>
+
+          {/* Meals Section */}
+          <section>
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">
+              Today&apos;s Meals
+            </h3>
+            <MealList meals={child.todayMeals} />
+          </section>
+        </>
+      )}
+
+      {/* This Week Tab */}
+      {activeTab === "thisWeek" && (
+        <>
+          {weeklyLoading && <WeeklyLoadingSpinner />}
+
+          {weeklyError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-8 text-center text-sm text-red-600">
+              {weeklyError}
+            </div>
+          )}
+
+          {weeklyData && !weeklyLoading && (
+            <>
+              {/* 7-day summary tiles */}
+              <WeeklySummary
+                weeklyAveragePercent={weeklyData.weeklyAveragePercent}
+                childName={child.name}
+              />
+
+              {/* Calories chart */}
+              <section className="mb-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                  Calories
+                </h3>
+                <WeeklyChart
+                  days={weeklyData.days}
+                  nutrient="calories"
+                  target={weeklyData.child.targets["calories"]?.target ?? 0}
+                  unit={weeklyData.child.targets["calories"]?.unit ?? "kcal"}
+                />
+              </section>
+
+              {/* Collapsible more nutrients */}
+              <section>
+                <button
+                  type="button"
+                  onClick={() => setShowMoreCharts((prev) => !prev)}
+                  className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  <span>More nutrients</span>
+                  <span className="text-xs text-gray-400">
+                    {showMoreCharts ? "▲" : "▼"}
+                  </span>
+                </button>
+
+                {showMoreCharts && (
+                  <div className="mt-3 space-y-4">
+                    {MORE_NUTRIENTS.map(({ key, label }) => (
+                      <div
+                        key={key}
+                        className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+                      >
+                        <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                          {label}
+                        </h3>
+                        <WeeklyChart
+                          days={weeklyData.days}
+                          nutrient={key}
+                          target={
+                            weeklyData.child.targets[key]?.target ?? 0
+                          }
+                          unit={weeklyData.child.targets[key]?.unit ?? ""}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
