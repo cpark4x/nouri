@@ -33,9 +33,9 @@ export function ChildCard({
   const initial = name.charAt(0).toUpperCase();
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="flex items-center justify-between px-5 pt-5">
         <div className="flex items-center gap-3">
           {photoUrl ? (
             <img
@@ -63,25 +63,28 @@ export function ChildCard({
         </Link>
       </div>
 
-      {/* Nutrient Bars */}
-      <div className="mb-4 space-y-2.5">
-        {PRIMARY_NUTRIENTS.map(({ key, label, fallbackUnit }) => {
-          const target = targets[key];
-          const intake = todayIntake[key];
-          return (
-            <NutrientBar
-              key={key}
-              label={label}
-              current={intake?.amount ?? 0}
-              target={target?.target ?? 0}
-              unit={target?.unit ?? intake?.unit ?? fallbackUnit}
-            />
-          );
-        })}
-      </div>
+      {/* Clickable area linking to child detail */}
+      <Link href={`/child/${id}`} className="block px-5 pb-5 pt-4">
+        {/* Nutrient Bars */}
+        <div className="mb-4 space-y-2.5">
+          {PRIMARY_NUTRIENTS.map(({ key, label, fallbackUnit }) => {
+            const target = targets[key];
+            const intake = todayIntake[key];
+            return (
+              <NutrientBar
+                key={key}
+                label={label}
+                current={intake?.amount ?? 0}
+                target={target?.target ?? 0}
+                unit={target?.unit ?? intake?.unit ?? fallbackUnit}
+              />
+            );
+          })}
+        </div>
 
-      {/* Meal Status */}
-      <MealStatus meals={todayMeals} />
+        {/* Meal Status */}
+        <MealStatus meals={todayMeals} />
+      </Link>
     </div>
   );
 }
