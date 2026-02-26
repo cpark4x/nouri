@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  NUTRIENT_GOOD_THRESHOLD,
+  NUTRIENT_WARN_THRESHOLD,
+} from "./nutrient-thresholds";
+
 const PRIMARY_NUTRIENTS = [
   { key: "calories", label: "Calories" },
   { key: "protein", label: "Protein" },
@@ -15,8 +20,8 @@ interface WeeklySummaryProps {
 }
 
 function getTileColorClass(percent: number): string {
-  if (percent >= 80) return "text-green-500";
-  if (percent >= 40) return "text-yellow-500";
+  if (percent >= NUTRIENT_GOOD_THRESHOLD) return "text-green-500";
+  if (percent >= NUTRIENT_WARN_THRESHOLD) return "text-yellow-500";
   return "text-red-500";
 }
 
@@ -41,7 +46,7 @@ export function WeeklySummary({
               <p
                 className={`text-2xl font-bold tabular-nums ${getTileColorClass(percent)}`}
               >
-                {percent}%
+                {Math.round(percent)}%
               </p>
               <p className="text-xs text-gray-400">7-day avg</p>
             </div>

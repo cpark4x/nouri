@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { NutrientDetail } from "@/components/dashboard/nutrient-detail";
@@ -103,6 +103,8 @@ export default function ChildDetailPage() {
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"today" | "thisWeek">("today");
+  const todayTabRef = useRef<HTMLButtonElement>(null);
+  const thisWeekTabRef = useRef<HTMLButtonElement>(null);
 
   // Weekly data state
   const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
@@ -149,11 +151,13 @@ export default function ChildDetailPage() {
         }
         const data = await res.json();
         setWeeklyData(data);
+        // Only mark as fetched on success — errors stay retryable by
+        // leaving the tab and coming back.
+        setWeeklyFetched(true);
       } catch {
         setWeeklyError("Failed to load weekly data");
       } finally {
         setWeeklyLoading(false);
-        setWeeklyFetched(true);
       }
     }
     fetchWeekly();
@@ -246,10 +250,26 @@ export default function ChildDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-1 rounded-lg bg-gray-100 p-1">
+      <div
+        role="tablist"
+        aria-label="Child data views"
+        className="mb-6 flex gap-1 rounded-lg bg-gray-100 p-1"
+      >
         <button
+          ref={todayTabRef}
           type="button"
+          role="tab"
+          id="tab-today"
+          aria-selected={activeTab === "today"}
+          aria-controls="panel-today"
+          tabIndex={activeTab === "today" ? 0 : -1}
           onClick={() => setActiveTab("today")}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowRight") {
+              setActiveTab("thisWeek");
+              thisWeekTabRef.current?.focus();
+            }
+          }}
           className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === "today"
               ? "bg-white text-gray-900 shadow-sm"
@@ -259,8 +279,20 @@ export default function ChildDetailPage() {
           Today
         </button>
         <button
+          ref={thisWeekTabRef}
           type="button"
+          role="tab"
+          id="tab-thisWeek"
+          aria-selected={activeTab === "thisWeek"}
+          aria-controls="panel-thisWeek"
+          tabIndex={activeTab === "thisWeek" ? 0 : -1}
           onClick={() => setActiveTab("thisWeek")}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowLeft") {
+              setActiveTab("today");
+              todayTabRef.current?.focus();
+            }
+          }}
           className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === "thisWeek"
               ? "bg-white text-gray-900 shadow-sm"
@@ -273,7 +305,7 @@ export default function ChildDetailPage() {
 
       {/* Today Tab */}
       {activeTab === "today" && (
-        <>
+        <div role="tabpanel" id="panel-today" aria-labelledby="tab-today">
           {/* Nutrition Section */}
           <section className="mb-8 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <NutrientDetail
@@ -289,12 +321,12 @@ export default function ChildDetailPage() {
             </h3>
             <MealList meals={child.todayMeals} />
           </section>
-        </>
+        </div>
       )}
 
       {/* This Week Tab */}
       {activeTab === "thisWeek" && (
-        <>
+        <div role="tabpanel" id="panel-thisWeek" aria-labelledby="tab-thisWeek">
           {weeklyLoading && <WeeklyLoadingSpinner />}
 
           {weeklyError && (
@@ -328,11 +360,12 @@ export default function ChildDetailPage() {
               <section>
                 <button
                   type="button"
+                  aria-expanded={showMoreCharts}
                   onClick={() => setShowMoreCharts((prev) => !prev)}
                   className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   <span>More nutrients</span>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-400" aria-hidden="true">
                     {showMoreCharts ? "▲" : "▼"}
                   </span>
                 </button>
@@ -362,7 +395,7 @@ export default function ChildDetailPage() {
               </section>
             </>
           )}
-        </>
+        </div>
       )}
     </div>
   );
