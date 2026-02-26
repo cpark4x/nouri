@@ -151,6 +151,7 @@ export default function KitchenCalibration() {
   async function handleDelete(id: string) {
     if (!confirm("Remove this kitchen item?")) return;
 
+    setError(null);
     try {
       const res = await fetch(`/api/kitchen/${id}`, { method: "DELETE" });
       if (!res.ok) {
@@ -291,6 +292,7 @@ export default function KitchenCalibration() {
         <div>
           <input
             type="text"
+            aria-label="Item name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. White dinner plate, Mason's blue cup"
