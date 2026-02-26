@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ChildCard } from "@/components/dashboard/child-card";
 
 interface ChildData {
@@ -87,11 +88,25 @@ export default function DashboardPage() {
 
       {/* Children cards */}
       {!loading && children.length > 0 && (
-        <div className="grid gap-5 md:grid-cols-2">
-          {children.map((child) => (
-            <ChildCard key={child.id} {...child} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-5 md:grid-cols-2">
+            {children.map((child) => (
+              <ChildCard key={child.id} {...child} />
+            ))}
+          </div>
+
+          {/* Family meal button — only show when there are 2+ children */}
+          {children.length >= 2 && (
+            <div className="mt-5 flex justify-center">
+              <Link
+                href="/log/family"
+                className="w-full rounded-lg border border-gray-200 py-3 text-center text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 md:w-auto md:px-8"
+              >
+                Log Family Meal
+              </Link>
+            </div>
+          )}
+        </>
       )}
 
       {/* Empty state */}
