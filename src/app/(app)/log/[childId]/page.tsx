@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import TextInput from "@/components/log/text-input";
 import PhotoInput from "@/components/log/photo-input";
 import MealConfirmation from "@/components/log/meal-confirmation";
+import QuickRelog from "@/components/log/quick-relog";
 import type { ParsedMeal } from "@/lib/ai/types";
 
 type LogState = "input" | "confirming" | "saving";
@@ -144,6 +145,15 @@ export default function MealLogPage({
       {/* Error banner */}
       {error && state !== "input" && (
         <p className="mb-4 text-sm text-red-600">{error}</p>
+      )}
+
+      {/* Quick re-log — only visible in input state */}
+      {state === "input" && childName && (
+        <QuickRelog
+          childId={childId}
+          childName={childName}
+          onRelogged={() => router.push("/")}
+        />
       )}
 
       {/* Input mode tabs — only visible in input state */}
