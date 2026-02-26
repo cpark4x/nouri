@@ -17,8 +17,7 @@ import {
 // ─── buildDateRange ──────────────────────────────────────────────────────────
 
 // 2026-02-26 is a Thursday; 7 days ending on that date = Feb 20 – Feb 26
-const endDate = new Date("2026-02-26T23:59:59.000Z");
-const range = buildDateRange(endDate);
+const range = buildDateRange("2026-02-26");
 
 assert.equal(range.length, 7, "should return exactly 7 dates");
 assert.equal(range[0], "2026-02-20", "first date should be 6 days before end");
