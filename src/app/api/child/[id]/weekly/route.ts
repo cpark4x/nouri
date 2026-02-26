@@ -28,31 +28,52 @@ export async function GET(
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get("date");
 
-  // Parse the requested end date; default to today.
-  const endDate = dateParam ? new Date(dateParam) : new Date();
-  // Extend to end-of-day so all logs on that date are included.
-  endDate.setHours(23, 59, 59, 999);
+  // Validate format and calendar value if a date param was supplied.
+  if (dateParam !== null) {
+    const isValidFormat = /^\d{4}-\d{2}-\d{2}$/.test(dateParam);
+    const isValidDate =
+      isValidFormat && !isNaN(new Date(dateParam).getTime());
+    if (!isValidDate) {
+      return NextResponse.json(
+        { error: "Invalid date parameter. Expected YYYY-MM-DD format." },
+        { status: 400 },
+      );
+    }
+  }
 
-  // Start date is 6 days earlier at midnight.
-  const startDate = new Date(endDate);
-  startDate.setDate(startDate.getDate() - 6);
-  startDate.setHours(0, 0, 0, 0);
+  // Use the provided date or today's UTC date as the inclusive end of the window.
+  const endDateStr = dateParam ?? new Date().toISOString().slice(0, 10);
+
+  // Build UTC-anchored boundaries so the Prisma range query matches the UTC
+  // dates used by aggregateIntakeByDate.
+  const endDate = new Date(`${endDateStr}T23:59:59.999Z`);
+  const startDate = new Date(`${endDateStr}T00:00:00.000Z`);
+  startDate.setUTCDate(startDate.getUTCDate() - 6);
 
   // ── Fetch child + targets ─────────────────────────────────────────────────
   const { id } = await params;
 
-  const child = await prisma.child.findUnique({
-    where: { id },
-    include: {
-      dailyTargets: true,
-      mealLogs: {
-        where: {
-          date: { gte: startDate, lte: endDate },
+  let child;
+  try {
+    child = await prisma.child.findUnique({
+      where: { id },
+      include: {
+        dailyTargets: true,
+        mealLogs: {
+          where: {
+            date: { gte: startDate, lte: endDate },
+          },
+          include: { nutrients: true },
         },
-        include: { nutrients: true },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error("Database error fetching weekly data for child:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
 
   if (!child) {
     return NextResponse.json({ error: "Child not found" }, { status: 404 });
@@ -71,7 +92,7 @@ export async function GET(
 
   // ── Aggregate + shape response ────────────────────────────────────────────
   const intakeMap = aggregateIntakeByDate(child.mealLogs);
-  const dateRange = buildDateRange(endDate);
+  const dateRange = buildDateRange(endDateStr);
   const days = buildDays(dateRange, intakeMap, targets);
   const { weeklyAverages, weeklyAveragePercent } = calculateWeeklyStats(
     days,

@@ -16,14 +16,14 @@ export interface DayData {
 
 /**
  * Returns an array of 7 ISO-date strings (YYYY-MM-DD) for the window
- * ending on `endDate` (inclusive).  Date arithmetic is done in UTC so that
- * the result is independent of the server's local timezone.
+ * ending on `endDateStr` (inclusive).  Accepts a YYYY-MM-DD string so that
+ * arithmetic is purely UTC and independent of the server's local timezone.
  */
-export function buildDateRange(endDate: Date): string[] {
+export function buildDateRange(endDateStr: string): string[] {
+  const [year, month, day] = endDateStr.split("-").map(Number);
   const dates: string[] = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(endDate);
-    d.setUTCDate(d.getUTCDate() - i);
+    const d = new Date(Date.UTC(year, month - 1, day - i));
     dates.push(d.toISOString().slice(0, 10));
   }
   return dates;
