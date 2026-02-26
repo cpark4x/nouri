@@ -100,6 +100,18 @@ async function main() {
     });
   }
   console.log(`Created ${charlotteTargets.length} daily targets for Charlotte`);
+
+  // Create a dev test user linked to the family
+  await prisma.user.upsert({
+    where: { email: "dev@nouri.app" },
+    update: { familyId: family.id, name: "Dev User" },
+    create: {
+      email: "dev@nouri.app",
+      name: "Dev User",
+      familyId: family.id,
+    },
+  });
+  console.log("Created dev user: dev@nouri.app");
 }
 
 main()

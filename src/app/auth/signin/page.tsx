@@ -25,6 +25,34 @@ export default function SignInPage() {
           </svg>
           Continue with GitHub
         </button>
+
+        {process.env.NODE_ENV === "development" && (
+          <>
+            <div className="relative mt-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-400">
+                  Dev only
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() =>
+                signIn("credentials", {
+                  email: "dev@nouri.app",
+                  callbackUrl: "/",
+                })
+              }
+              type="button"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-100"
+            >
+              Dev Sign In (dev@nouri.app)
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
