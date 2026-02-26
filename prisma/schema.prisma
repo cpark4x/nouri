@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Family {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  children     Child[]
+  recipes      Recipe[]
+  kitchenItems KitchenItem[]
+  chatMessages ChatMessage[]
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  familyId      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  family       Family?       @relation(fields: [familyId], references: [id])
+  accounts     Account[]
+  sessions     Session[]
+  chatMessages ChatMessage[]
+}
+
+// NextAuth required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Child {
+  id              String   @id @default(cuid())
+  familyId        String
+  name            String
+  dateOfBirth     DateTime
+  gender          String
+  photoUrl        String?
+  heightCm        Float?
+  weightKg        Float?
+  activityProfile Json? // { sports: [{ name, frequency, intensity }] }
+  goals           String? // e.g., "growth optimization"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  family          Family           @relation(fields: [familyId], references: [id])
+  healthRecords   HealthRecord[]
+  foodPreferences FoodPreference[]
+  mealLogs        MealLog[]
+  dailyTargets    DailyTarget[]
+}
+
+model HealthRecord {
+  id        String   @id @default(cuid())
+  childId   String
+  type      String // "blood_work", "growth_measurement", "supplement", "note"
+  date      DateTime
+  data      Json // flexible: { iron: 12, vitaminD: 30, ... } or { height: 148, weight: 38 }
+  notes     String?
+  fileUrl   String? // uploaded PDF/photo of blood work
+  createdAt DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id])
+}
+
+model FoodPreference {
+  id        String   @id @default(cuid())
+  childId   String
+  food      String // e.g., "salmon", "broccoli", "pasta"
+  rating    String // "love", "like", "neutral", "dislike", "hate"
+  notes     String? // e.g., "only likes it grilled, not baked"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  child Child @relation(fields: [childId], references: [id])
+}
+
+model MealLog {
+  id          String   @id @default(cuid())
+  childId     String
+  date        DateTime @default(now())
+  mealType    String // "breakfast", "lunch", "dinner", "snack"
+  description String // raw text input from parent
+  photoUrl    String? // food photo if provided
+  confidence  String   @default("medium") // "high", "medium", "low"
+  aiAnalysis  Json? // raw AI response for debugging
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  child     Child            @relation(fields: [childId], references: [id])
+  nutrients NutritionEntry[]
+}
+
+model NutritionEntry {
+  id        String @id @default(cuid())
+  mealLogId String
+  nutrient  String // "calories", "protein", "calcium", "vitaminD", "iron", "zinc", etc.
+  amount    Float
+  unit      String // "kcal", "g", "mg", "IU", "mcg"
+
+  mealLog MealLog @relation(fields: [mealLogId], references: [id], onDelete: Cascade)
+}
+
+model DailyTarget {
+  id        String   @id @default(cuid())
+  childId   String
+  nutrient  String // same keys as NutritionEntry
+  target    Float
+  unit      String
+  updatedAt DateTime @updatedAt
+
+  child Child @relation(fields: [childId], references: [id])
+
+  @@unique([childId, nutrient])
+}
+
+model Recipe {
+  id                  String   @id @default(cuid())
+  familyId            String
+  title               String
+  sourceUrl           String?
+  sourceName          String? // "Grandma", "Budget Bytes", "Nouri suggestion"
+  description         String?
+  instructions        String?  @db.Text
+  ingredients         Json? // [{ name, amount, unit }]
+  nutritionPerServing Json? // { calories: 420, protein: 38, ... }
+  familyRating        String? // "loved", "ok", "skip"
+  tags                String[] // ["quick", "high-protein", "family-favorite"]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  family       Family             @relation(fields: [familyId], references: [id])
+  childRatings RecipeChildRating[]
+}
+
+model RecipeChildRating {
+  id       String  @id @default(cuid())
+  recipeId String
+  childId  String
+  rating   String // "loved", "ate_it", "didnt_eat"
+  notes    String?
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, childId])
+}
+
+model KitchenItem {
+  id                  String   @id @default(cuid())
+  familyId            String
+  name                String // "white dinner plate", "Mason's blue glass"
+  type                String // "plate", "bowl", "glass", "cup"
+  photoUrl            String?
+  estimatedDimensions Json? // { diameterCm: 26, volumeMl: 350 }
+  createdAt           DateTime @default(now())
+
+  family Family @relation(fields: [familyId], references: [id])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  familyId  String
+  userId    String? // which user sent it (null for AI responses)
+  role      String // "user", "assistant"
+  content   String   @db.Text
+  metadata  Json? // any context: which child discussed, actions taken
+  createdAt DateTime @default(now())
+
+  family Family @relation(fields: [familyId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+}
