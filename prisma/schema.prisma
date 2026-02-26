@@ -13,22 +13,24 @@ model Family {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  parents      Parent[]
+  users        User[]
   children     Child[]
   recipes      Recipe[]
   kitchenItems KitchenItem[]
   chatMessages ChatMessage[]
 }
 
-model Parent {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  familyId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  familyId      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  family       Family        @relation(fields: [familyId], references: [id])
+  family       Family?       @relation(fields: [familyId], references: [id])
   accounts     Account[]
   sessions     Session[]
   chatMessages ChatMessage[]
@@ -37,7 +39,7 @@ model Parent {
 // NextAuth required models
 model Account {
   id                String  @id @default(cuid())
-  parentId          String
+  userId            String
   type              String
   provider          String
   providerAccountId String
@@ -49,7 +51,7 @@ model Account {
   id_token          String? @db.Text
   session_state     String?
 
-  parent Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -57,10 +59,10 @@ model Account {
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
-  parentId     String
+  userId       String
   expires      DateTime
 
-  parent Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -202,12 +204,12 @@ model KitchenItem {
 model ChatMessage {
   id        String   @id @default(cuid())
   familyId  String
-  parentId  String? // which parent sent it (null for AI responses)
+  userId    String? // which user sent it (null for AI responses)
   role      String // "user", "assistant"
   content   String   @db.Text
   metadata  Json? // any context: which child discussed, actions taken
   createdAt DateTime @default(now())
 
-  family Family  @relation(fields: [familyId], references: [id])
-  parent Parent? @relation(fields: [parentId], references: [id])
+  family Family @relation(fields: [familyId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
 }
