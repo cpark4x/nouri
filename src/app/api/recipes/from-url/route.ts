@@ -17,16 +17,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No family found" }, { status: 400 });
   }
 
-  const body = await request.json();
-  const { url } = body as { url: unknown };
+  // Parse and validate request body
+  let body: { url?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
 
-  // Validate URL
+  const { url } = body;
+
   if (!url || typeof url !== "string") {
     return NextResponse.json({ error: "url is required" }, { status: 400 });
   }
 
+  // Validate URL format and restrict to http/https to prevent SSRF via other protocols
   try {
-    new URL(url);
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return NextResponse.json(
+        { error: "Only http and https URLs are supported" },
+        { status: 400 },
+      );
+    }
   } catch {
     return NextResponse.json(
       { error: "Invalid URL provided" },
@@ -35,10 +48,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Scrape and extract recipe via Gemini
-  let scraped;
-  try {
-    scraped = await scrapeRecipeFromUrl(url);
-  } catch {
+  const scraped = await scrapeRecipeFromUrl(url).catch(() => null);
+
+  if (!scraped) {
     return NextResponse.json(
       {
         error:
@@ -49,19 +61,26 @@ export async function POST(request: NextRequest) {
   }
 
   // Persist to DB
-  const recipe = await prisma.recipe.create({
-    data: {
-      familyId,
-      title: scraped.title,
-      sourceName: scraped.sourceName,
-      sourceUrl: url,
-      instructions: scraped.instructions ?? null,
-      ingredients: scraped.ingredients,
-      nutritionPerServing: scraped.nutritionPerServing,
-      tags: scraped.tags,
-    },
-    include: { childRatings: true },
-  });
+  try {
+    const recipe = await prisma.recipe.create({
+      data: {
+        familyId,
+        title: scraped.title,
+        sourceName: scraped.sourceName,
+        sourceUrl: url,
+        instructions: scraped.instructions || null,
+        ingredients: scraped.ingredients,
+        nutritionPerServing: scraped.nutritionPerServing,
+        tags: scraped.tags,
+      },
+      include: { childRatings: true },
+    });
 
-  return NextResponse.json({ recipe }, { status: 201 });
+    return NextResponse.json({ recipe }, { status: 201 });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to save recipe" },
+      { status: 500 },
+    );
+  }
 }

@@ -1,23 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-function getClient(): GoogleGenerativeAI {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GOOGLE_GEMINI_API_KEY not configured");
-  }
-  return new GoogleGenerativeAI(apiKey);
-}
-
-/**
- * Extract JSON from a string that may contain markdown code fences.
- */
-function extractJSON(text: string): string {
-  const fenceMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  if (fenceMatch) {
-    return fenceMatch[1].trim();
-  }
-  return text.trim();
-}
+import { getClient, extractJSON } from "./gemini-client";
 
 export interface ScrapedRecipe {
   title: string;
@@ -36,16 +17,18 @@ export interface ScrapedRecipe {
  * unparseable JSON.
  */
 export async function scrapeRecipeFromUrl(url: string): Promise<ScrapedRecipe> {
-  // 1. Fetch the page
+  // 1. Fetch the page — enforce a 15 s timeout so a slow server can't hang the handler
   let html: string;
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(15_000),
+    });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
     html = await response.text();
   } catch {
-    throw new Error("Could not extract recipe from that URL");
+    throw new Error("Could not fetch that URL");
   }
 
   // 2. Strip HTML tags — remove scripts/styles first, then all remaining tags
@@ -57,21 +40,15 @@ export async function scrapeRecipeFromUrl(url: string): Promise<ScrapedRecipe> {
     .trim()
     .slice(0, 8000);
 
+  if (!plainText) {
+    throw new Error("Could not extract recipe from that URL");
+  }
+
   // 3. Call Gemini
   const client = getClient();
   const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  const prompt = `Extract the recipe from this webpage text. Return JSON with:
-title (string), instructions (string),
-ingredients (array of {name, amount, unit}),
-nutritionPerServing (object with numeric values for calories, protein, calcium,
-vitaminD, iron, zinc, magnesium, potassium, vitaminA, vitaminC, fiber, omega3),
-tags (array of strings like 'quick', 'high-protein', 'family-friendly').
-Estimate nutrition if not explicitly stated.
-Return ONLY valid JSON, no markdown, no extra text.
-
-Webpage text:
-${plainText}`;
+  const prompt = `Extract the recipe from this webpage text. Return JSON with:\ntitle (string), instructions (string),\ningredients (array of {name, amount, unit}),\nnutritionPerServing (object with numeric values for calories, protein, calcium,\nvitaminD, iron, zinc, magnesium, potassium, vitaminA, vitaminC, fiber, omega3),\ntags (array of strings like 'quick', 'high-protein', 'family-friendly').\nEstimate nutrition if not explicitly stated.\nReturn ONLY valid JSON, no markdown, no extra text.\n\nWebpage text:\n${plainText}`;
 
   try {
     const result = await model.generateContent(prompt);
@@ -95,7 +72,7 @@ ${plainText}`;
     const sourceName = new URL(url).hostname.replace(/^www\./, "");
 
     return {
-      title: parsed.title,
+      title: parsed.title ?? "",
       sourceName,
       instructions: parsed.instructions ?? "",
       ingredients: parsed.ingredients ?? [],

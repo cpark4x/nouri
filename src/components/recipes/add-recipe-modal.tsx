@@ -130,7 +130,10 @@ export function AddRecipeModal({ onClose, onAdded }: AddRecipeModalProps) {
                 ? "bg-gray-900 text-white"
                 : "bg-white text-gray-600 hover:bg-gray-50"
             }`}
-            onClick={() => setActiveTab("describe")}
+            onClick={() => {
+              setActiveTab("describe");
+              setUrlError(null);
+            }}
           >
             Describe it
           </button>
@@ -141,7 +144,10 @@ export function AddRecipeModal({ onClose, onAdded }: AddRecipeModalProps) {
                 ? "bg-gray-900 text-white"
                 : "bg-white text-gray-600 hover:bg-gray-50"
             }`}
-            onClick={() => setActiveTab("url")}
+            onClick={() => {
+              setActiveTab("url");
+              setError(null);
+            }}
           >
             Paste a URL
           </button>
