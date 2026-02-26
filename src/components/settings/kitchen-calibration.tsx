@@ -42,6 +42,7 @@ export default function KitchenCalibration() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   // Form state
   const [name, setName] = useState("");
@@ -148,9 +149,8 @@ export default function KitchenCalibration() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Remove this kitchen item?")) return;
-
+  async function doDelete(id: string) {
+    setConfirmingId(null);
     setError(null);
     try {
       const res = await fetch(`/api/kitchen/${id}`, { method: "DELETE" });
@@ -266,15 +266,35 @@ export default function KitchenCalibration() {
                   )}
                 </div>
 
-                {/* Delete button */}
-                <button
-                  type="button"
-                  onClick={() => handleDelete(item.id)}
-                  className="flex-shrink-0 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                  aria-label={`Remove ${item.name}`}
-                >
-                  🗑️
-                </button>
+                {/* Delete button / inline confirmation */}
+                {confirmingId === item.id ? (
+                  <div className="flex flex-shrink-0 items-center gap-2">
+                    <span className="text-sm text-gray-600">Remove?</span>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingId(null)}
+                      className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => doDelete(item.id)}
+                      className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors"
+                    >
+                      Yes, remove
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingId(item.id)}
+                    className="flex-shrink-0 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                    aria-label={`Remove ${item.name}`}
+                  >
+                    🗑️
+                  </button>
+                )}
               </li>
             );
           })}

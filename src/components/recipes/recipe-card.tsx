@@ -62,15 +62,26 @@ export function RecipeCard({
 }: RecipeCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const nutrition = recipe.nutritionPerServing as Record<string, number> | null;
   const familyRatingInfo = recipe.familyRating
     ? FAMILY_RATING_LABELS[recipe.familyRating]
     : null;
 
-  async function handleDelete(e: React.MouseEvent) {
+  function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm(`Delete "${recipe.title}"?`)) return;
+    setConfirmingDelete(true);
+  }
+
+  function cancelDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    setConfirmingDelete(false);
+  }
+
+  function doDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    setConfirmingDelete(false);
     setDeleting(true);
     onDelete?.(recipe.id);
   }
@@ -214,14 +225,34 @@ export function RecipeCard({
           {/* Delete */}
           {onDelete && (
             <div className="pt-1">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
-              >
-                {deleting ? "Deleting…" : "Delete recipe"}
-              </button>
+              {confirmingDelete ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600">Delete this recipe?</span>
+                  <button
+                    type="button"
+                    onClick={cancelDelete}
+                    className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={doDelete}
+                    className="text-sm text-red-600 font-medium hover:text-red-800 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
+                >
+                  {deleting ? "Deleting…" : "Delete recipe"}
+                </button>
+              )}
             </div>
           )}
         </div>
