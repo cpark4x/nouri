@@ -25,21 +25,30 @@ function InsightSkeleton() {
 export function WeeklyInsight({ childId, childName }: WeeklyInsightProps) {
   const [data, setData] = useState<InsightData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchInsight = useCallback(async () => {
+  const fetchInsight = useCallback(async (force = false) => {
     setLoading(true);
-    setError(false);
+    setError(null);
     try {
-      const res = await fetch(`/api/child/${childId}/insight`);
+      const url = force
+        ? `/api/child/${childId}/insight?force=true`
+        : `/api/child/${childId}/insight`;
+      const res = await fetch(url);
       if (!res.ok) {
-        setError(true);
+        const msg =
+          res.status >= 500
+            ? "Insight service is temporarily unavailable — try again in a moment."
+            : "Couldn\u2019t load insight.";
+        setError(msg);
         return;
       }
       const json = (await res.json()) as InsightData;
       setData(json);
     } catch {
-      setError(true);
+      setError(
+        "Couldn\u2019t reach the server. Check your connection and try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -59,8 +68,9 @@ export function WeeklyInsight({ childId, childName }: WeeklyInsightProps) {
         <p className="text-sm text-gray-500">✨ Nouri&apos;s take</p>
         <button
           type="button"
-          onClick={fetchInsight}
-          className="text-xs text-gray-400 hover:text-gray-600"
+          onClick={() => fetchInsight(true)}
+          disabled={loading}
+          className="text-xs text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Refresh insight"
         >
           Refresh
@@ -71,9 +81,7 @@ export function WeeklyInsight({ childId, childName }: WeeklyInsightProps) {
       {loading && <InsightSkeleton />}
 
       {!loading && error && (
-        <p className="text-sm text-gray-400">
-          Couldn&apos;t generate insight right now.
-        </p>
+        <p className="text-sm text-gray-400">{error}</p>
       )}
 
       {!loading && !error && data && (

@@ -76,7 +76,7 @@ function buildActivitySummary(activityProfile: unknown): string {
 // ── Route ──────────────────────────────────────────────────────────────────────
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -91,14 +91,26 @@ export async function GET(
   }
 
   const { id } = await params;
+  const forceRefresh =
+    request.nextUrl.searchParams.get("force") === "true";
 
   // ── Cache check ───────────────────────────────────────────────────────────
   const today = new Date();
   const weekStart = getMondayOfWeek(today);
   const cacheKey = `${id}-${weekStart}`;
-  const cached = insightCache.get(cacheKey);
-  if (cached) {
-    return NextResponse.json(cached);
+
+  // Evict stale entries from previous weeks to keep memory bounded
+  for (const key of insightCache.keys()) {
+    if (!key.endsWith(`-${weekStart}`)) {
+      insightCache.delete(key);
+    }
+  }
+
+  if (!forceRefresh) {
+    const cached = insightCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
   }
 
   // ── Date window — same pattern as /weekly ─────────────────────────────────
@@ -157,7 +169,7 @@ export async function GET(
   }).join("\n");
 
   const systemPrompt =
-    "You are Nouri, a pediatric nutrition assistant for the Park family.";
+    "You are Nouri, a friendly and knowledgeable pediatric nutrition assistant.";
 
   const userMessage =
     `Child: ${child.name}, ${age} years old, ${activitySummary}\n\n` +
