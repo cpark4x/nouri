@@ -8,3 +8,5 @@ export const ai = {
   chat,
   researchRecipes,
 };
+
+export { scrapeRecipeFromUrl } from "./providers/recipe-scraper";

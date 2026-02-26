@@ -16,6 +16,48 @@ export function AddRecipeModal({ onClose, onAdded }: AddRecipeModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // URL tab state
+  const [recipeUrl, setRecipeUrl] = useState("");
+  const [urlSubmitting, setUrlSubmitting] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
+
+  async function handleUrlSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = recipeUrl.trim();
+    if (!trimmed) {
+      setUrlError("Please enter a URL.");
+      return;
+    }
+
+    setUrlSubmitting(true);
+    setUrlError(null);
+
+    try {
+      const res = await fetch("/api/recipes/from-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmed }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setUrlError(
+          data.error ??
+            "Could not import recipe from that URL. Try describing it instead.",
+        );
+        return;
+      }
+
+      const data = await res.json();
+      onAdded(data.recipe as Recipe);
+      onClose();
+    } catch {
+      setUrlError("Something went wrong. Please try again.");
+    } finally {
+      setUrlSubmitting(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) {
@@ -94,14 +136,82 @@ export function AddRecipeModal({ onClose, onAdded }: AddRecipeModalProps) {
           </button>
           <button
             type="button"
-            disabled
-            title="Coming in M3.2"
-            className="relative flex-1 py-2 text-sm font-medium text-gray-400 bg-gray-50 cursor-not-allowed"
+            className={`flex-1 py-2 text-sm font-medium transition-colors ${
+              activeTab === "url"
+                ? "bg-gray-900 text-white"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+            onClick={() => setActiveTab("url")}
           >
             Paste a URL
-            <span className="ml-1 text-xs text-gray-400">(M3.2)</span>
           </button>
         </div>
+
+        {/* Paste a URL form */}
+        {activeTab === "url" && (
+          <form onSubmit={handleUrlSubmit} className="space-y-3">
+            <div>
+              <label
+                htmlFor="recipe-url"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                Recipe URL
+              </label>
+              <input
+                id="recipe-url"
+                type="url"
+                value={recipeUrl}
+                onChange={(e) => setRecipeUrl(e.target.value)}
+                placeholder="https://www.budgetbytes.com/recipe..."
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+            </div>
+
+            {urlError && <p className="text-sm text-red-500">{urlError}</p>}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-lg border border-gray-300 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={urlSubmitting}
+                className="flex-1 rounded-lg bg-gray-900 py-2 text-sm font-medium text-white hover:bg-gray-800 transition-colors disabled:opacity-60"
+              >
+                {urlSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg
+                      className="h-4 w-4 animate-spin"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z"
+                      />
+                    </svg>
+                    Importing recipe…
+                  </span>
+                ) : (
+                  "Import Recipe"
+                )}
+              </button>
+            </div>
+          </form>
+        )}
 
         {/* Describe it form */}
         {activeTab === "describe" && (
