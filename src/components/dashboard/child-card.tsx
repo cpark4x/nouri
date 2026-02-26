@@ -1,0 +1,87 @@
+"use client";
+
+import Link from "next/link";
+import { NutrientBar } from "./nutrient-bar";
+import { MealStatus } from "./meal-status";
+
+interface ChildCardProps {
+  id: string;
+  name: string;
+  age: number;
+  photoUrl: string | null;
+  targets: Record<string, { target: number; unit: string }>;
+  todayIntake: Record<string, { amount: number; unit: string }>;
+  todayMeals: { mealType: string; logged: boolean; summary?: string }[];
+}
+
+const PRIMARY_NUTRIENTS = [
+  { key: "calories", label: "Calories", fallbackUnit: "kcal" },
+  { key: "protein", label: "Protein", fallbackUnit: "g" },
+  { key: "calcium", label: "Calcium", fallbackUnit: "mg" },
+  { key: "vitaminD", label: "Vitamin D", fallbackUnit: "IU" },
+];
+
+export function ChildCard({
+  id,
+  name,
+  age,
+  photoUrl,
+  targets,
+  todayIntake,
+  todayMeals,
+}: ChildCardProps) {
+  const initial = name.charAt(0).toUpperCase();
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      {/* Header */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {photoUrl ? (
+            <img
+              src={photoUrl}
+              alt={name}
+              className="h-10 w-10 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-900 text-sm font-semibold text-white">
+              {initial}
+            </div>
+          )}
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">{name}</h2>
+            <p className="text-sm text-gray-500">
+              {age} year{age !== 1 ? "s" : ""} old
+            </p>
+          </div>
+        </div>
+        <Link
+          href={`/log/${id}`}
+          className="rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+        >
+          + Log Meal
+        </Link>
+      </div>
+
+      {/* Nutrient Bars */}
+      <div className="mb-4 space-y-2.5">
+        {PRIMARY_NUTRIENTS.map(({ key, label, fallbackUnit }) => {
+          const target = targets[key];
+          const intake = todayIntake[key];
+          return (
+            <NutrientBar
+              key={key}
+              label={label}
+              current={intake?.amount ?? 0}
+              target={target?.target ?? 0}
+              unit={target?.unit ?? intake?.unit ?? fallbackUnit}
+            />
+          );
+        })}
+      </div>
+
+      {/* Meal Status */}
+      <MealStatus meals={todayMeals} />
+    </div>
+  );
+}
