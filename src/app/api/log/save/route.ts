@@ -7,6 +7,10 @@ import { normalizeMealType } from "./normalize-meal-type";
 
 type NutrientKey = keyof NutritionEstimate;
 
+const MAX_DESCRIPTION_LENGTH = 2000;
+const MAX_TITLE_LENGTH = 200;
+const VALID_CONFIDENCE = new Set<string>(["high", "medium", "low"]);
+
 const NUTRIENT_UNITS: Record<NutrientKey, string> = {
   calories: "kcal",
   protein: "g",
@@ -56,6 +60,23 @@ export async function POST(request: Request) {
     );
   }
 
+  const trimmedDescription = description.trim();
+  const title = parsedMeal.title?.trim() ?? null;
+
+  if (trimmedDescription.length > MAX_DESCRIPTION_LENGTH) {
+    return NextResponse.json(
+      { error: `description exceeds maximum length of ${MAX_DESCRIPTION_LENGTH} characters` },
+      { status: 400 },
+    );
+  }
+
+  if (title && title.length > MAX_TITLE_LENGTH) {
+    return NextResponse.json(
+      { error: `parsedMeal.title exceeds maximum length of ${MAX_TITLE_LENGTH} characters` },
+      { status: 400 },
+    );
+  }
+
   const mealType = normalizeMealType(body.mealType);
   if (!mealType) {
     return NextResponse.json(
@@ -67,6 +88,13 @@ export async function POST(request: Request) {
   if (!parsedMeal.totalNutrition) {
     return NextResponse.json(
       { error: "parsedMeal.totalNutrition is missing" },
+      { status: 400 },
+    );
+  }
+
+  if (!VALID_CONFIDENCE.has(parsedMeal.confidence)) {
+    return NextResponse.json(
+      { error: "parsedMeal.confidence must be one of: high, medium, low" },
       { status: 400 },
     );
   }
@@ -102,10 +130,13 @@ export async function POST(request: Request) {
       data: {
         childId,
         mealType,
-        description,
+        description: trimmedDescription,
+        title,
         photoUrl: photoUrl ?? null,
         confidence: parsedMeal.confidence,
-        aiAnalysis: parsedMeal as any,
+        // Serialize to a plain object — ParsedMeal contains typed interfaces
+        // that Prisma's InputJsonValue doesn't accept directly without a cast.
+        aiAnalysis: JSON.parse(JSON.stringify(parsedMeal)) as object,
         nutrients: {
           create: nutritionData,
         },

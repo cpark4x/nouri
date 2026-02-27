@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ParsedMeal, ChatMessage, ChatResponse } from "../types";
+import { extractJSON } from "./utils";
 
 function getClient(): Anthropic {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -9,23 +10,12 @@ function getClient(): Anthropic {
 }
 
 /**
- * Extract JSON from a string that may contain markdown code fences.
- */
-function extractJSON(text: string): string {
-  const fenceMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  if (fenceMatch) {
-    return fenceMatch[1].trim();
-  }
-  return text.trim();
-}
-
-/**
  * Parse a natural-language food description into structured food items
  * with USDA-aligned nutrition estimates.
  */
 export async function parseFoodDescription(
   description: string,
-  childContext: object,
+  childContext: Record<string, unknown>,
 ): Promise<ParsedMeal> {
   const client = getClient();
 
@@ -52,17 +42,22 @@ Return ONLY valid JSON matching this exact structure (no markdown, no extra text
     "fiber": number,
     "omega3": number
   },
-  "confidence": "high" | "medium" | "low",
-  "assumptions": ["string"]
+  "confidence": "high",
+  "assumptions": ["string"],
+  "title": "string",
+  "cleanDescription": "string"
 }
 
 Units: protein/fiber in grams, calcium/iron/zinc/magnesium/potassium/omega3 in mg, vitaminD in IU, vitaminA in mcg, vitaminC in mg, calories in kcal.
-Be conservative with estimates. If unsure about a specific food variety, note the assumption.`;
+Be conservative with estimates. If unsure about a specific food variety, note the assumption.
+title: 2-5 words, title case, clean and descriptive (e.g. "Scrambled Eggs & Toast", "Chicken Pasta Dinner")
+cleanDescription: One complete sentence in third person describing the full meal (e.g. "Two scrambled eggs with buttered whole wheat toast and a glass of orange juice.")
+confidence: use "high" if all items and portions are clearly identifiable, "medium" if making reasonable assumptions, "low" if significantly uncertain.`;
 
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: systemPrompt,
       messages: [{ role: "user", content: description }],
     });
@@ -73,7 +68,14 @@ Be conservative with estimates. If unsure about a specific food variety, note th
     }
 
     const json = extractJSON(textBlock.text);
-    return JSON.parse(json) as ParsedMeal;
+    const parsed = JSON.parse(json) as ParsedMeal;
+    if (!Array.isArray(parsed.items) || !parsed.totalNutrition) {
+      throw new Error("AI response missing required nutrition fields");
+    }
+    // Fallback for old data that pre-dates these fields
+    parsed.title = parsed.title ?? "";
+    parsed.cleanDescription = parsed.cleanDescription ?? "";
+    return parsed;
   } catch (error) {
     if (error instanceof Anthropic.APIError) {
       throw new Error(`Anthropic API error: ${error.message}`);
@@ -95,7 +97,7 @@ export async function chat(
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: systemPrompt,
       messages: messages.map((m) => ({
         role: m.role,

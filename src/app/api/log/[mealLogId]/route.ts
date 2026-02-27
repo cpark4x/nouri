@@ -166,6 +166,7 @@ export async function PUT(
         where: { id: mealLogId },
         data: {
           description,
+          title: parsed.title ?? null,
           confidence: parsed.confidence,
           aiAnalysis: parsed as unknown as Prisma.InputJsonValue,
         },

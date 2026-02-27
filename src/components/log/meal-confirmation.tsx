@@ -40,18 +40,23 @@ export default function MealConfirmation({
   onConfirm,
   onBack,
 }: MealConfirmationProps) {
-  const { items, totalNutrition, confidence, assumptions } = parsedMeal;
+  const { items, totalNutrition, confidence, assumptions, title, cleanDescription } = parsedMeal;
   const style = CONFIDENCE_STYLES[confidence] ?? CONFIDENCE_STYLES.medium;
 
   return (
     <div className="space-y-6">
-      {/* Header with confidence badge */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">
-          {childName}&apos;s Meal
-        </h3>
+      {/* Header with AI title, description, and confidence badge */}
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-gray-900">
+          {title || `${childName}'s Meal`}
+        </h2>
+        {cleanDescription && (
+          <p className="mt-1 text-sm text-gray-500 leading-relaxed">
+            {cleanDescription}
+          </p>
+        )}
         <span
-          className={`rounded-full px-3 py-1 text-xs font-medium ${style.bg} ${style.text}`}
+          className={`mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${style.bg} ${style.text}`}
         >
           {style.label}
         </span>

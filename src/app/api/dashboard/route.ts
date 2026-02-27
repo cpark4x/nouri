@@ -96,13 +96,16 @@ export async function GET() {
     const loggedMealTypes = new Set(
       child.mealLogs.map((m) => m.mealType.toLowerCase())
     );
-    const todayMeals = ALLOWED_MEAL_TYPES.map((mealType) => ({
-      mealType,
-      logged: loggedMealTypes.has(mealType),
-      summary: child.mealLogs.find(
+    const todayMeals = ALLOWED_MEAL_TYPES.map((mealType) => {
+      const log = child.mealLogs.find(
         (m) => m.mealType.toLowerCase() === mealType
-      )?.description,
-    }));
+      );
+      return {
+        mealType,
+        logged: loggedMealTypes.has(mealType),
+        summary: log?.title ?? log?.description,
+      };
+    });
 
     return {
       id: child.id,

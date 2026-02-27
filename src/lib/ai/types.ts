@@ -24,6 +24,8 @@ export interface ParsedMeal {
   totalNutrition: NutritionEstimate;
   confidence: "high" | "medium" | "low";
   assumptions: string[]; // e.g., "Assumed whole wheat toast"
+  title: string; // AI-generated clean title e.g. "Scrambled Eggs & Toast"
+  cleanDescription: string; // One readable sentence e.g. "Two scrambled eggs with buttered wheat toast and OJ."
 }
 
 export interface ChatMessage {
