@@ -6,8 +6,9 @@ import TextInput from "@/components/log/text-input";
 import MealConfirmation from "@/components/log/meal-confirmation";
 import QuickRelog from "@/components/log/quick-relog";
 import type { ParsedMeal } from "@/lib/ai/types";
+import type { MealType } from "@/lib/meal-type-inference";
 
-type LogState = "input" | "confirming" | "saving";
+type LogState = "input" | "confirming";
 
 export default function MealLogPage({
   params,
@@ -25,32 +26,44 @@ export default function MealLogPage({
   // Parsed meal data held between states
   const [parsedMeal, setParsedMeal] = useState<ParsedMeal | null>(null);
   const [description, setDescription] = useState("");
-  const [mealType, setMealType] = useState("");
+  const [mealType, setMealType] = useState<MealType | "">("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Fetch child name on mount
+  // Fetch child name on mount; abort if childId changes or component unmounts
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchChild() {
       try {
-        const res = await fetch(`/api/child/${childId}`);
+        const res = await fetch(`/api/child/${childId}`, {
+          signal: controller.signal,
+        });
         if (!res.ok) throw new Error("Failed to load child");
-        const data = await res.json();
+        const data = await res.json() as { name: string };
         setChildName(data.name);
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
         setError("Could not load child profile");
       } finally {
         setLoading(false);
       }
     }
     fetchChild();
+
+    return () => controller.abort();
   }, [childId]);
 
-  function handleParsed(parsed: ParsedMeal, desc: string, meal: string) {
+  function handleParsed(
+    parsed: ParsedMeal,
+    desc: string,
+    meal: MealType,
+    photo?: string,
+  ) {
     setParsedMeal(parsed);
     setDescription(desc);
     setMealType(meal);
-    setPhotoUrl(null);
+    setPhotoUrl(photo ?? null);
     setState("confirming");
   }
 
@@ -72,7 +85,7 @@ export default function MealLogPage({
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json() as { error?: string };
         throw new Error(data.error || "Failed to save meal");
       }
 
@@ -130,7 +143,7 @@ export default function MealLogPage({
         </h1>
       </div>
 
-      {/* Error banner */}
+      {/* Error banner (save errors — TextInput handles its own input errors) */}
       {error && state !== "input" && (
         <p className="mb-4 text-sm text-red-600">{error}</p>
       )}

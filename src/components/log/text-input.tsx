@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ParsedMeal } from "@/lib/ai/types";
 import { inferMealType, MEAL_TYPE_LABELS } from "@/lib/meal-type-inference";
 import type { MealType } from "@/lib/meal-type-inference";
@@ -9,7 +9,22 @@ const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
 
 export interface TextInputProps {
   childName: string;
-  onParsed: (parsed: ParsedMeal, description: string, mealType: string) => void;
+  onParsed: (
+    parsed: ParsedMeal,
+    description: string,
+    mealType: MealType,
+    photoUrl?: string,
+  ) => void;
+}
+
+/** Safely extract an error message from a non-ok Response. */
+async function extractErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const data: { error?: string } = await res.json();
+    return data.error ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 export default function TextInput({ childName, onParsed }: TextInputProps) {
@@ -22,6 +37,21 @@ export default function TextInput({ childName, onParsed }: TextInputProps) {
   const [loadingMessage, setLoadingMessage] = useState("Analyzing…");
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Revoke object URL whenever it changes (covers new selections and unmount)
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  // Abort any in-flight fetch on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -43,6 +73,7 @@ export default function TextInput({ childName, onParsed }: TextInputProps) {
   }
 
   function clearPhoto() {
+    // Explicit revoke here; the useEffect will also fire but double-revoking is harmless
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setSelectedFile(null);
     setPreviewUrl(null);
@@ -55,6 +86,11 @@ export default function TextInput({ childName, onParsed }: TextInputProps) {
     const hasText = description.trim().length > 0;
     const hasPhoto = selectedFile !== null;
     if ((!hasText && !hasPhoto) || loading) return;
+
+    // Cancel any previous in-flight request before starting a new one
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setLoading(true);
     setError(null);
@@ -72,28 +108,29 @@ export default function TextInput({ childName, onParsed }: TextInputProps) {
         const uploadRes = await fetch("/api/upload", {
           method: "POST",
           body: formData,
+          signal: controller.signal,
         });
         if (!uploadRes.ok) {
-          const data = await uploadRes.json();
-          throw new Error(data.error || "Failed to upload photo");
+          throw new Error(await extractErrorMessage(uploadRes, "Failed to upload photo"));
         }
-        const { url: photoUrl } = await uploadRes.json();
+        const { url: photoUrl } = await uploadRes.json() as { url: string };
 
         setLoadingMessage("Analyzing food…");
         const parseRes = await fetch("/api/log/parse-photo", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ childId, imageUrl: photoUrl, mealType }),
+          signal: controller.signal,
         });
         if (!parseRes.ok) {
-          const data = await parseRes.json();
-          throw new Error(data.error || "Failed to analyze photo");
+          throw new Error(await extractErrorMessage(parseRes, "Failed to analyze photo"));
         }
-        const parsed: ParsedMeal = await parseRes.json();
+        const parsed = await parseRes.json() as ParsedMeal;
         const desc =
           description.trim() ||
           parsed.items.map((item) => item.name).join(", ");
-        onParsed(parsed, desc, mealType);
+        // Pass photoUrl to parent so the saved meal log can reference the image
+        onParsed(parsed, desc, mealType, photoUrl);
       } else {
         // Text-only flow
         setLoadingMessage("Analyzing…");
@@ -105,15 +142,17 @@ export default function TextInput({ childName, onParsed }: TextInputProps) {
             description: description.trim(),
             mealType,
           }),
+          signal: controller.signal,
         });
         if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Failed to analyze meal");
+          throw new Error(await extractErrorMessage(res, "Failed to analyze meal"));
         }
-        const parsed: ParsedMeal = await res.json();
+        const parsed = await res.json() as ParsedMeal;
         onParsed(parsed, description.trim(), mealType);
       }
     } catch (err) {
+      // Silently ignore aborts (unmount or new submission)
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
