@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface MealNutrient {
   nutrient: string;
@@ -56,9 +56,33 @@ function formatTime(isoString: string): string {
 
 function MealItem({ meal }: { meal: Meal }) {
   const [expanded, setExpanded] = useState(false);
+  const [tipText, setTipText] = useState<string | null>(null);
+  const [tipLoading, setTipLoading] = useState(false);
+  const [tipFetched, setTipFetched] = useState(false);
+
   const label = MEAL_LABELS[meal.mealType] ?? meal.mealType;
   const confidenceClass =
     CONFIDENCE_STYLES[meal.confidence] ?? CONFIDENCE_STYLES.medium;
+
+  useEffect(() => {
+    if (!expanded || tipFetched) return;
+    setTipLoading(true);
+    setTipFetched(true);
+    fetch(`/api/log/${meal.id}/tip`)
+      .then((res) => {
+        if (!res.ok) throw new Error("tip fetch failed");
+        return res.json() as Promise<{ tip: string }>;
+      })
+      .then((data) => {
+        setTipText(data.tip);
+      })
+      .catch(() => {
+        // silently skip on any error
+      })
+      .finally(() => {
+        setTipLoading(false);
+      });
+  }, [expanded, tipFetched, meal.id]);
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
@@ -104,6 +128,15 @@ function MealItem({ meal }: { meal: Meal }) {
               </div>
             ))}
           </div>
+
+          {tipLoading && (
+            <div className="mt-3 h-8 animate-pulse rounded-lg bg-green-100" />
+          )}
+          {!tipLoading && tipText !== null && (
+            <div className="mt-3 rounded-lg bg-green-50 border border-green-100 px-3 py-2 text-sm text-green-800">
+              ✨ {tipText}
+            </div>
+          )}
         </div>
       )}
     </div>
