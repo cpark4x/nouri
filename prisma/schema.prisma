@@ -123,9 +123,9 @@ model MealLog {
   id          String   @id @default(cuid())
   childId     String
   date        DateTime @default(now())
-  mealType    String // "breakfast", "lunch", "dinner", "snack"
-  description String // raw text input from parent
-  title       String? // AI-generated clean title
+  mealType    String   @db.VarChar(20) // "breakfast", "lunch", "dinner", "snack"
+  description String   @db.Text // raw text input from parent
+  title       String?  @db.VarChar(200) // AI-generated clean title
   photoUrl    String? // food photo if provided
   confidence  String   @default("medium") // "high", "medium", "low"
   aiAnalysis  Json? // raw AI response for debugging
