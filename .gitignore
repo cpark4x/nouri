@@ -49,3 +49,6 @@ next-env.d.ts
 # test artifacts
 /screenshots/
 /test-evidence/
+
+# uploads
+/public/uploads/
