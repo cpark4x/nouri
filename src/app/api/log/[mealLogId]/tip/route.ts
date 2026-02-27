@@ -6,12 +6,18 @@ import { chat } from "@/lib/ai/providers/anthropic";
 import type { ChatMessage } from "@/lib/ai/types";
 import { calculateNutrientPercents, buildTipPrompt } from "./logic";
 
-// ── In-memory cache ──────────────────────────────────────────────────────────
+// ── In-memory cache ───────────────────────────────────────────────────────────
 // Keyed by mealLogId — tip is generated at most once per meal per server
-// process lifetime.
+// process lifetime.  Capped at TIP_CACHE_MAX entries; the oldest entry is
+// evicted when the limit is reached (Map preserves insertion order).
+const TIP_CACHE_MAX = 500;
 const tipCache = new Map<string, string>();
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── AI call constants ─────────────────────────────────────────────────────────
+// Bail out early rather than holding the connection open if Anthropic is slow.
+const TIP_TIMEOUT_MS = 15_000;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function calculateAge(dateOfBirth: Date): number {
   const today = new Date();
@@ -46,7 +52,7 @@ function buildActivitySummary(activityProfile: unknown): string {
     .join("; ");
 }
 
-// ── Route ────────────────────────────────────────────────────────────────────
+// ── Route ─────────────────────────────────────────────────────────────────────
 
 export async function GET(
   _request: NextRequest,
@@ -98,21 +104,21 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // ── Build nutrient context ─────────────────────────────────────────────────
+  // ── Build nutrient context ────────────────────────────────────────────────
   const percents = calculateNutrientPercents(
     mealLog.nutrients,
     mealLog.child.dailyTargets,
   );
 
   const nutrientLines = Object.entries(percents)
-    .map(([, np]) => {
+    .map(([name, np]) => {
       const percentStr =
         np.percent != null ? ` (${np.percent}% of daily target)` : "";
-      return `- ${Math.round(np.amount)} ${np.unit}${percentStr}`;
+      return `- ${name}: ${Math.round(np.amount)} ${np.unit}${percentStr}`;
     })
     .join("\n");
 
-  // ── Build prompt ───────────────────────────────────────────────────────────
+  // ── Build prompt ──────────────────────────────────────────────────────────
   const child = mealLog.child;
   const age = calculateAge(child.dateOfBirth);
   const activitySummary = buildActivitySummary(child.activityProfile);
@@ -130,12 +136,27 @@ export async function GET(
 
   const messages: ChatMessage[] = [{ role: "user", content: userMessage }];
 
-  // ── Call AI ────────────────────────────────────────────────────────────────
+  // ── Call AI (with timeout) ────────────────────────────────────────────────
   let tip: string;
   try {
-    const response = await chat(messages, systemPrompt);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("tip_timeout")),
+        TIP_TIMEOUT_MS,
+      ),
+    );
+    const response = await Promise.race([chat(messages, systemPrompt), timeoutPromise]);
     tip = response.content.trim();
   } catch (error) {
+    const isTimeout =
+      error instanceof Error && error.message === "tip_timeout";
+    if (isTimeout) {
+      console.warn("AI tip generation timed out for mealLogId:", mealLogId);
+      return NextResponse.json(
+        { error: "Tip generation timed out — try again shortly" },
+        { status: 503 },
+      );
+    }
     console.error("AI error generating meal tip:", error);
     return NextResponse.json(
       { error: "Failed to generate tip" },
@@ -143,7 +164,12 @@ export async function GET(
     );
   }
 
-  // ── Cache and return ───────────────────────────────────────────────────────
+  // ── Cache (with size cap) and return ──────────────────────────────────────
+  if (tipCache.size >= TIP_CACHE_MAX) {
+    // Map.keys() iterates in insertion order — first key is the oldest entry.
+    const oldestKey = tipCache.keys().next().value;
+    if (oldestKey !== undefined) tipCache.delete(oldestKey);
+  }
   tipCache.set(mealLogId, tip);
   return NextResponse.json({ tip });
 }

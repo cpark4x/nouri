@@ -59,6 +59,7 @@ function MealItem({ meal }: { meal: Meal }) {
   const [tipText, setTipText] = useState<string | null>(null);
   const [tipLoading, setTipLoading] = useState(false);
   const [tipFetched, setTipFetched] = useState(false);
+  const [tipError, setTipError] = useState(false);
 
   const label = MEAL_LABELS[meal.mealType] ?? meal.mealType;
   const confidenceClass =
@@ -68,6 +69,7 @@ function MealItem({ meal }: { meal: Meal }) {
     if (!expanded || tipFetched) return;
     setTipLoading(true);
     setTipFetched(true);
+    setTipError(false);
     fetch(`/api/log/${meal.id}/tip`)
       .then((res) => {
         if (!res.ok) throw new Error("tip fetch failed");
@@ -77,7 +79,7 @@ function MealItem({ meal }: { meal: Meal }) {
         setTipText(data.tip);
       })
       .catch(() => {
-        // silently skip on any error
+        setTipError(true);
       })
       .finally(() => {
         setTipLoading(false);
@@ -136,6 +138,11 @@ function MealItem({ meal }: { meal: Meal }) {
             <div className="mt-3 rounded-lg bg-green-50 border border-green-100 px-3 py-2 text-sm text-green-800">
               ✨ {tipText}
             </div>
+          )}
+          {!tipLoading && tipError && (
+            <p className="mt-3 text-xs text-gray-400">
+              Tip unavailable — try again later
+            </p>
           )}
         </div>
       )}
