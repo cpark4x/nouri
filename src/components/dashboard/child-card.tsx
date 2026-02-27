@@ -34,19 +34,20 @@ export function ChildCard({
   const initial = name.charAt(0).toUpperCase();
 
   const [suggestion, setSuggestion] = useState<string | null>(null);
-  const [suggestionLoaded, setSuggestionLoaded] = useState(false);
 
   useEffect(() => {
     fetch(`/api/child/${id}/suggestions`)
-      .then((res) => res.json())
-      .then((data: { suggestion: string | null }) => {
-        setSuggestion(data.suggestion);
+      .then((res) => {
+        if (!res.ok) return;
+        return res.json();
+      })
+      .then((data: { suggestion: string | null } | undefined) => {
+        if (data?.suggestion) {
+          setSuggestion(data.suggestion);
+        }
       })
       .catch(() => {
         // Silently skip on error — suggestions are non-critical
-      })
-      .finally(() => {
-        setSuggestionLoaded(true);
       });
   }, [id]);
 

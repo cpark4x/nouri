@@ -12,9 +12,13 @@ import {
 } from "./logic";
 
 // ── In-memory cache ────────────────────────────────────────────────────────────
-// Keyed by `${childId}-${todayDateString}` so a suggestion is generated at most
-// once per child per day. Entries from previous days are pruned on each request.
+// Keyed by `${childId}-${todayDateString}`. Avoids redundant AI calls within a
+// warm function instance. Does NOT persist across cold starts (serverless).
+// Entries from previous days are pruned on each request to bound memory.
 const suggestionCache = new Map<string, string>();
+
+// ── AI timeout ─────────────────────────────────────────────────────────────────
+const AI_TIMEOUT_MS = 10_000;
 
 // ── Route ──────────────────────────────────────────────────────────────────────
 
@@ -53,9 +57,9 @@ export async function GET(
   }
 
   // ── Fetch child with today's meal logs ────────────────────────────────────
-  const todayStart = new Date();
+  const todayStart = new Date(today);
   todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
+  const todayEnd = new Date(today);
   todayEnd.setHours(23, 59, 59, 999);
 
   let child;
@@ -86,7 +90,7 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // ── Compute intake and gaps ────────────────────────────────────────────────
+  // ── Compute intake and gaps ───────────────────────────────────────────────
   const intakeMap = aggregateTodayIntake(child.mealLogs);
 
   // Find calorie target and today's calorie intake
@@ -107,7 +111,7 @@ export async function GET(
     return NextResponse.json({ suggestion: null });
   }
 
-  // ── Compute age ────────────────────────────────────────────────────────────
+  // ── Compute age ───────────────────────────────────────────────────────────
   const birthDate = child.dateOfBirth;
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();
@@ -118,7 +122,7 @@ export async function GET(
     age--;
   }
 
-  // ── Build prompt and call AI ───────────────────────────────────────────────
+  // ── Build prompt and call AI ──────────────────────────────────────────────
   const prompt = buildSuggestionPrompt(
     child.name,
     age,
@@ -132,7 +136,16 @@ export async function GET(
 
   let suggestion: string;
   try {
-    const response = await chat(messages, systemPrompt);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("AI request timed out")),
+        AI_TIMEOUT_MS,
+      ),
+    );
+    const response = await Promise.race([
+      chat(messages, systemPrompt),
+      timeoutPromise,
+    ]);
     suggestion = response.content.trim();
   } catch (error) {
     console.error("AI error generating daily suggestion:", error);
@@ -142,7 +155,7 @@ export async function GET(
     );
   }
 
-  // ── Cache and return ───────────────────────────────────────────────────────
+  // ── Cache and return ──────────────────────────────────────────────────────
   suggestionCache.set(cacheKey, suggestion);
   return NextResponse.json({ suggestion });
 }

@@ -3,7 +3,7 @@
  * Separated for testability — no I/O, no DB, no AI calls.
  */
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface NutrientTarget {
   nutrient: string;
@@ -24,7 +24,7 @@ export interface NutrientGap {
   percentRemaining: number;
 }
 
-// ─── aggregateTodayIntake ─────────────────────────────────────────────────────
+// ─── aggregateTodayIntake ────────────────────────────────────────────────────
 
 /**
  * Sums all nutrient amounts across today's meal logs into a flat map.
@@ -45,7 +45,8 @@ export function aggregateTodayIntake(
 
 /**
  * Computes nutrient gaps sorted by percentRemaining descending.
- * Excludes nutrients with a target of 0.
+ * Excludes nutrients with a target of 0 or where the child has already
+ * met or exceeded their target (remaining <= 0).
  */
 export function computeGaps(
   targets: NutrientTarget[],
@@ -66,6 +67,7 @@ export function computeGaps(
         percentRemaining,
       };
     })
+    .filter((g) => g.remaining > 0)
     .sort((a, b) => b.percentRemaining - a.percentRemaining);
 }
 
@@ -100,7 +102,7 @@ export function buildSuggestionPrompt(
     .join(", ");
 
   return (
-    `You are Nouri. ${childName} (${age}yo) needs to eat more today. ` +
+    `${childName} (${age}yo) needs to eat more today. ` +
     `Their biggest gaps: ${gapLines}. ` +
     `They've eaten ${calorieIntake} of ${calorieTarget} calories today. ` +
     `Write ONE sentence (max 25 words) with a specific kid-friendly food suggestion ` +
