@@ -79,6 +79,8 @@ export default function QuickRelog({
         totalNutrition,
         confidence: "high" as const,
         assumptions: ["Re-logged from previous meal"],
+        title: "",
+        cleanDescription: "",
       };
 
       const res = await fetch("/api/log/save", {

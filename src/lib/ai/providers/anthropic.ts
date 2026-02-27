@@ -53,11 +53,15 @@ Return ONLY valid JSON matching this exact structure (no markdown, no extra text
     "omega3": number
   },
   "confidence": "high" | "medium" | "low",
-  "assumptions": ["string"]
+  "assumptions": ["string"],
+  "title": "string",
+  "cleanDescription": "string"
 }
 
 Units: protein/fiber in grams, calcium/iron/zinc/magnesium/potassium/omega3 in mg, vitaminD in IU, vitaminA in mcg, vitaminC in mg, calories in kcal.
-Be conservative with estimates. If unsure about a specific food variety, note the assumption.`;
+Be conservative with estimates. If unsure about a specific food variety, note the assumption.
+title: 2-5 words, title case, clean and descriptive (e.g. "Scrambled Eggs & Toast", "Chicken Pasta Dinner")
+cleanDescription: One complete sentence in third person describing the full meal (e.g. "Two scrambled eggs with buttered whole wheat toast and a glass of orange juice.")`;
 
   try {
     const response = await client.messages.create({
@@ -73,7 +77,11 @@ Be conservative with estimates. If unsure about a specific food variety, note th
     }
 
     const json = extractJSON(textBlock.text);
-    return JSON.parse(json) as ParsedMeal;
+    const parsed = JSON.parse(json) as ParsedMeal;
+    // Fallback for old data that pre-dates these fields
+    parsed.title = parsed.title ?? "";
+    parsed.cleanDescription = parsed.cleanDescription ?? "";
+    return parsed;
   } catch (error) {
     if (error instanceof Anthropic.APIError) {
       throw new Error(`Anthropic API error: ${error.message}`);

@@ -53,11 +53,15 @@ Return ONLY valid JSON matching this exact structure (no markdown, no extra text
     "omega3": number
   },
   "confidence": "high" | "medium" | "low",
-  "assumptions": ["string"]
+  "assumptions": ["string"],
+  "title": "string",
+  "cleanDescription": "string"
 }
 
 Units: protein/fiber in grams, calcium/iron/zinc/magnesium/potassium/omega3 in mg, vitaminD in IU, vitaminA in mcg, vitaminC in mg, calories in kcal.
-Be conservative with estimates. Note assumptions about portion sizes based on visual cues.`;
+Be conservative with estimates. Note assumptions about portion sizes based on visual cues.
+title: 2-5 words, title case, clean and descriptive (e.g. "Scrambled Eggs & Toast", "Chicken Pasta Dinner")
+cleanDescription: One complete sentence in third person describing the full meal (e.g. "Two scrambled eggs with buttered whole wheat toast and a glass of orange juice.")`;
 
   try {
     const response = await client.chat.completions.create({
@@ -89,7 +93,11 @@ Be conservative with estimates. Note assumptions about portion sizes based on vi
     }
 
     const json = extractJSON(text);
-    return JSON.parse(json) as ParsedMeal;
+    const parsed = JSON.parse(json) as ParsedMeal;
+    // Fallback for old data that pre-dates these fields
+    parsed.title = parsed.title ?? "";
+    parsed.cleanDescription = parsed.cleanDescription ?? "";
+    return parsed;
   } catch (error) {
     if (error instanceof OpenAI.APIError) {
       throw new Error(`OpenAI API error: ${error.message}`);
