@@ -38,7 +38,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const familyId = (session as any).familyId as string | undefined;
+  const familyId = session.familyId ?? undefined;
 
   if (!familyId) {
     return NextResponse.json({ error: "No family found" }, { status: 403 });
@@ -50,19 +50,24 @@ export async function GET(
   const todayStart = startOfDay(now);
   const todayEnd = endOfDay(now);
 
-  const child = await prisma.child.findUnique({
-    where: { id },
-    include: {
-      dailyTargets: true,
-      mealLogs: {
-        where: {
-          date: { gte: todayStart, lte: todayEnd },
+  let child;
+  try {
+    child = await prisma.child.findUnique({
+      where: { id },
+      include: {
+        dailyTargets: true,
+        mealLogs: {
+          where: {
+            date: { gte: todayStart, lte: todayEnd },
+          },
+          include: { nutrients: true },
+          orderBy: { createdAt: "desc" },
         },
-        include: { nutrients: true },
-        orderBy: { createdAt: "desc" },
       },
-    },
-  });
+    });
+  } catch {
+    return NextResponse.json({ error: "Database error" }, { status: 500 });
+  }
 
   if (!child || child.familyId !== familyId) {
     return NextResponse.json({ error: "Child not found" }, { status: 404 });
