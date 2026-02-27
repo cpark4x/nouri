@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { NutrientBar } from "./nutrient-bar";
 import { MealStatus } from "./meal-status";
@@ -31,6 +32,23 @@ export function ChildCard({
   todayMeals,
 }: ChildCardProps) {
   const initial = name.charAt(0).toUpperCase();
+
+  const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [suggestionLoaded, setSuggestionLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/child/${id}/suggestions`)
+      .then((res) => res.json())
+      .then((data: { suggestion: string | null }) => {
+        setSuggestion(data.suggestion);
+      })
+      .catch(() => {
+        // Silently skip on error — suggestions are non-critical
+      })
+      .finally(() => {
+        setSuggestionLoaded(true);
+      });
+  }, [id]);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -84,6 +102,14 @@ export function ChildCard({
 
         {/* Meal Status */}
         <MealStatus meals={todayMeals} />
+
+        {/* AI Suggestion — only shown when non-null; no skeleton to avoid layout flash */}
+        {suggestion !== null && (
+          <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <span className="mt-0.5 shrink-0">💡</span>
+            <span>{suggestion}</span>
+          </div>
+        )}
       </Link>
     </div>
   );
