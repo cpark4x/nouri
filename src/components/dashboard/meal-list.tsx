@@ -11,6 +11,7 @@ interface MealNutrient {
 interface Meal {
   id: string;
   mealType: string;
+  title?: string | null;
   description: string;
   createdAt: string;
   confidence: string;
@@ -149,8 +150,9 @@ function MealItem({
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-900">
-              {label}
+            {/* Use title as primary label if available, fall back to meal type label */}
+            <span className="font-medium text-gray-900 truncate">
+              {meal.title || MEAL_LABELS[meal.mealType] || meal.mealType}
             </span>
             <span
               className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${confidenceClass}`}

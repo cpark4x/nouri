@@ -90,6 +90,7 @@ export async function GET(
   const todayMeals = child.mealLogs.map((meal) => ({
     id: meal.id,
     mealType: meal.mealType,
+    title: meal.title ?? null,
     description: meal.description,
     createdAt: meal.createdAt.toISOString(),
     confidence: meal.confidence,
