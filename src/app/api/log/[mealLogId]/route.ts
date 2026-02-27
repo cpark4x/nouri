@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@/generated/prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ai } from "@/lib/ai/router";
@@ -166,8 +167,7 @@ export async function PUT(
         data: {
           description,
           confidence: parsed.confidence,
-          aiAnalysis: parsed as any,
-          updatedAt: new Date(),
+          aiAnalysis: parsed as unknown as Prisma.InputJsonValue,
         },
       });
 

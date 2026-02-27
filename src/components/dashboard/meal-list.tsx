@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface MealNutrient {
   nutrient: string;
@@ -74,16 +74,22 @@ function MealItem({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Holds the AbortController for any in-flight tip request so we can cancel
+  // it if the user saves an edit before the tip resolves (race-condition guard).
+  const abortTipRef = useRef<AbortController | null>(null);
+
   const label = MEAL_LABELS[meal.mealType] ?? meal.mealType;
   const confidenceClass =
     CONFIDENCE_STYLES[meal.confidence] ?? CONFIDENCE_STYLES.medium;
 
   useEffect(() => {
     if (!expanded || tipFetched) return;
+    const controller = new AbortController();
+    abortTipRef.current = controller;
     setTipLoading(true);
     setTipFetched(true);
     setTipError(false);
-    fetch(`/api/log/${meal.id}/tip`)
+    fetch(`/api/log/${meal.id}/tip`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error("tip fetch failed");
         return res.json() as Promise<{ tip: string }>;
@@ -91,12 +97,14 @@ function MealItem({
       .then((data) => {
         setTipText(data.tip);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
         setTipError(true);
       })
       .finally(() => {
         setTipLoading(false);
       });
+    return () => controller.abort();
   }, [expanded, tipFetched, meal.id]);
 
   async function handleSave() {
@@ -109,17 +117,24 @@ function MealItem({
         body: JSON.stringify({ description: editText }),
       });
       if (!res.ok) {
-        throw new Error("save failed");
+        // Surface the server's error message (e.g. AI failure) when available
+        const data = await res.json().catch(() => null) as { error?: string } | null;
+        throw new Error(data?.error ?? "Failed to save. Please try again.");
       }
       const updatedMeal = (await res.json()) as Meal;
       setMeal(updatedMeal);
       onUpdate?.(updatedMeal);
+      // Cancel any in-flight tip fetch so a stale tip from the old description
+      // cannot overwrite state after the save completes (race-condition guard).
+      abortTipRef.current?.abort();
       // Reset tip so it re-fetches against the updated meal on next expand
       setTipText(null);
       setTipFetched(false);
       setEditing(false);
-    } catch {
-      setSaveError("Failed to save. Please try again.");
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save. Please try again.",
+      );
     } finally {
       setSaving(false);
     }
@@ -257,7 +272,7 @@ export function MealList({ meals: initialMeals }: MealListProps) {
           key={meal.id}
           meal={meal}
           onUpdate={(updated) =>
-            setMeals(meals.map((m) => (m.id === updated.id ? updated : m)))
+            setMeals((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
           }
         />
       ))}
