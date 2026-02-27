@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import type { ParsedMeal, NutritionEstimate } from "@/lib/ai/types";
+import { normalizeMealType } from "./normalize-meal-type";
 
 type NutrientKey = keyof NutritionEstimate;
 
@@ -33,15 +34,22 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { childId, mealType, description, parsedMeal, photoUrl } = body as {
+  const { childId, description, parsedMeal, photoUrl } = body as {
     childId: string;
-    mealType: string;
     description: string;
     parsedMeal: ParsedMeal;
     photoUrl?: string;
   };
 
-  if (!childId || !mealType || !description || !parsedMeal) {
+  const mealType = normalizeMealType(body.mealType as string ?? "");
+  if (!mealType) {
+    return NextResponse.json(
+      { error: "Invalid mealType. Must be one of: breakfast, lunch, snack, dinner" },
+      { status: 400 },
+    );
+  }
+
+  if (!childId || !description || !parsedMeal) {
     return NextResponse.json(
       { error: "childId, mealType, description, and parsedMeal are required" },
       { status: 400 },

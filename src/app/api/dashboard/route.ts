@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
+const MEAL_TYPES = ["breakfast", "lunch", "snack", "dinner"] as const;
 
 function calculateAge(dateOfBirth: Date): number {
   const today = new Date();
