@@ -125,6 +125,7 @@ model MealLog {
   date        DateTime @default(now())
   mealType    String // "breakfast", "lunch", "dinner", "snack"
   description String // raw text input from parent
+  title       String? // AI-generated clean title
   photoUrl    String? // food photo if provided
   confidence  String   @default("medium") // "high", "medium", "low"
   aiAnalysis  Json? // raw AI response for debugging

@@ -47,6 +47,7 @@ export async function POST(request: Request) {
   }
 
   const { childId, description, parsedMeal, photoUrl } = body;
+  const title = parsedMeal?.title ?? null;
 
   // Validate all required fields before any DB access
   if (!childId || !description || !parsedMeal) {
@@ -103,6 +104,7 @@ export async function POST(request: Request) {
         childId,
         mealType,
         description,
+        title,
         photoUrl: photoUrl ?? null,
         confidence: parsedMeal.confidence,
         aiAnalysis: parsedMeal as any,
