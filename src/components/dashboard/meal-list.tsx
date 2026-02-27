@@ -54,12 +54,25 @@ function formatTime(isoString: string): string {
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-function MealItem({ meal }: { meal: Meal }) {
+function MealItem({
+  meal: initialMeal,
+  onUpdate,
+}: {
+  meal: Meal;
+  onUpdate?: (updatedMeal: Meal) => void;
+}) {
+  const [meal, setMeal] = useState(initialMeal);
   const [expanded, setExpanded] = useState(false);
   const [tipText, setTipText] = useState<string | null>(null);
   const [tipLoading, setTipLoading] = useState(false);
   const [tipFetched, setTipFetched] = useState(false);
   const [tipError, setTipError] = useState(false);
+
+  // Edit state
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const label = MEAL_LABELS[meal.mealType] ?? meal.mealType;
   const confidenceClass =
@@ -85,6 +98,32 @@ function MealItem({ meal }: { meal: Meal }) {
         setTipLoading(false);
       });
   }, [expanded, tipFetched, meal.id]);
+
+  async function handleSave() {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/log/${meal.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: editText }),
+      });
+      if (!res.ok) {
+        throw new Error("save failed");
+      }
+      const updatedMeal = (await res.json()) as Meal;
+      setMeal(updatedMeal);
+      onUpdate?.(updatedMeal);
+      // Reset tip so it re-fetches against the updated meal on next expand
+      setTipText(null);
+      setTipFetched(false);
+      setEditing(false);
+    } catch {
+      setSaveError("Failed to save. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
@@ -131,6 +170,56 @@ function MealItem({ meal }: { meal: Meal }) {
             ))}
           </div>
 
+          {/* ── Edit UI ──────────────────────────────────────────────────── */}
+          {!editing ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(true);
+                  setEditText(meal.description);
+                }}
+                className="mt-1 text-xs text-gray-400 hover:text-gray-600 underline"
+              >
+                Edit meal
+              </button>
+            </>
+          ) : (
+            <div className="mt-2">
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 p-2 text-sm resize-none"
+                rows={3}
+              />
+              {saveError && (
+                <p className="mt-1 text-xs text-red-500">{saveError}</p>
+              )}
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || !editText.trim()}
+                  className="text-xs bg-emerald-600 text-white px-3 py-1 rounded-md disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(false);
+                    setSaveError(null);
+                  }}
+                  disabled={saving}
+                  className="text-xs text-gray-500 px-3 py-1 rounded-md border"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Tip UI ───────────────────────────────────────────────────── */}
           {tipLoading && (
             <div className="mt-3 h-8 animate-pulse rounded-lg bg-green-100" />
           )}
@@ -150,7 +239,9 @@ function MealItem({ meal }: { meal: Meal }) {
   );
 }
 
-export function MealList({ meals }: MealListProps) {
+export function MealList({ meals: initialMeals }: MealListProps) {
+  const [meals, setMeals] = useState(initialMeals);
+
   if (meals.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-400">
@@ -162,7 +253,13 @@ export function MealList({ meals }: MealListProps) {
   return (
     <div className="space-y-2">
       {meals.map((meal) => (
-        <MealItem key={meal.id} meal={meal} />
+        <MealItem
+          key={meal.id}
+          meal={meal}
+          onUpdate={(updated) =>
+            setMeals(meals.map((m) => (m.id === updated.id ? updated : m)))
+          }
+        />
       ))}
     </div>
   );
