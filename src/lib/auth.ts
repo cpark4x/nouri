@@ -60,10 +60,8 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (session as any).userId = token.userId;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (session as any).familyId = token.familyId;
+      session.userId = token.userId;
+      session.familyId = token.familyId;
       return session;
     },
   },
