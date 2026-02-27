@@ -28,27 +28,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const familyId = (session as any).familyId as string | undefined;
+  const familyId = session.familyId ?? undefined;
   if (!familyId) {
     return NextResponse.json({ error: "No family found" }, { status: 400 });
   }
 
-  const body = await request.json();
-  const { childId, description, parsedMeal, photoUrl } = body as {
+  let body: {
     childId: string;
     description: string;
     parsedMeal: ParsedMeal;
     photoUrl?: string;
+    mealType?: string;
   };
-
-  const mealType = normalizeMealType(body.mealType as string ?? "");
-  if (!mealType) {
-    return NextResponse.json(
-      { error: "Invalid mealType. Must be one of: breakfast, lunch, snack, dinner" },
-      { status: 400 },
-    );
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  const { childId, description, parsedMeal, photoUrl } = body;
+
+  // Validate all required fields before any DB access
   if (!childId || !description || !parsedMeal) {
     return NextResponse.json(
       { error: "childId, mealType, description, and parsedMeal are required" },
@@ -56,10 +56,28 @@ export async function POST(request: Request) {
     );
   }
 
+  const mealType = normalizeMealType(body.mealType);
+  if (!mealType) {
+    return NextResponse.json(
+      { error: "Invalid mealType. Must be one of: breakfast, lunch, snack, dinner" },
+      { status: 400 },
+    );
+  }
+
+  if (!parsedMeal.totalNutrition) {
+    return NextResponse.json(
+      { error: "parsedMeal.totalNutrition is missing" },
+      { status: 400 },
+    );
+  }
+
   // Verify child belongs to family
-  const child = await prisma.child.findUnique({
-    where: { id: childId },
-  });
+  let child;
+  try {
+    child = await prisma.child.findUnique({ where: { id: childId } });
+  } catch {
+    return NextResponse.json({ error: "Database error" }, { status: 500 });
+  }
 
   if (!child || child.familyId !== familyId) {
     return NextResponse.json({ error: "Child not found" }, { status: 404 });
@@ -78,19 +96,24 @@ export async function POST(request: Request) {
     }));
 
   // Create MealLog with nested NutritionEntry records
-  const mealLog = await prisma.mealLog.create({
-    data: {
-      childId,
-      mealType,
-      description,
-      photoUrl: photoUrl ?? null,
-      confidence: parsedMeal.confidence,
-      aiAnalysis: parsedMeal as any,
-      nutrients: {
-        create: nutritionData,
+  let mealLog;
+  try {
+    mealLog = await prisma.mealLog.create({
+      data: {
+        childId,
+        mealType,
+        description,
+        photoUrl: photoUrl ?? null,
+        confidence: parsedMeal.confidence,
+        aiAnalysis: parsedMeal as any,
+        nutrients: {
+          create: nutritionData,
+        },
       },
-    },
-  });
+    });
+  } catch {
+    return NextResponse.json({ error: "Failed to save meal log" }, { status: 500 });
+  }
 
   return NextResponse.json({ id: mealLog.id });
 }

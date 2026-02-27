@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-
-const MEAL_TYPES = ["breakfast", "lunch", "snack", "dinner"] as const;
+import { ALLOWED_MEAL_TYPES } from "@/app/api/log/save/normalize-meal-type";
 
 function calculateAge(dateOfBirth: Date): number {
   const today = new Date();
@@ -47,24 +46,29 @@ export async function GET() {
   const todayStart = startOfDay(now);
   const todayEnd = endOfDay(now);
 
-  const children = await prisma.child.findMany({
-    where: { familyId },
-    include: {
-      dailyTargets: true,
-      mealLogs: {
-        where: {
-          date: {
-            gte: todayStart,
-            lte: todayEnd,
+  let children;
+  try {
+    children = await prisma.child.findMany({
+      where: { familyId },
+      include: {
+        dailyTargets: true,
+        mealLogs: {
+          where: {
+            date: {
+              gte: todayStart,
+              lte: todayEnd,
+            },
+          },
+          include: {
+            nutrients: true,
           },
         },
-        include: {
-          nutrients: true,
-        },
       },
-    },
-    orderBy: { dateOfBirth: "asc" },
-  });
+      orderBy: { dateOfBirth: "asc" },
+    });
+  } catch {
+    return NextResponse.json({ error: "Database error" }, { status: 500 });
+  }
 
   const result = children.map((child) => {
     // Build targets map
@@ -92,7 +96,7 @@ export async function GET() {
     const loggedMealTypes = new Set(
       child.mealLogs.map((m) => m.mealType.toLowerCase())
     );
-    const todayMeals = MEAL_TYPES.map((mealType) => ({
+    const todayMeals = ALLOWED_MEAL_TYPES.map((mealType) => ({
       mealType,
       logged: loggedMealTypes.has(mealType),
       summary: child.mealLogs.find(
