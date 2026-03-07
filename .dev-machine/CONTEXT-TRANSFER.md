@@ -5,6 +5,42 @@ Each session prepends an entry here before exiting.
 
 ---
 
+## Session: b7-past-meals-history — 2026-03-07
+
+### What Was Done
+- Spec implemented: `/Users/chrispark/Projects/nouri/specs/features/phase1/b7-past-meals-history.md`
+- **Files created:**
+  - `src/app/api/child/[id]/__tests__/date-filter.test.ts` — 5 unit tests covering all spec skeleton criteria (parseDateParam null/valid/garbage, buildDateWindow 24h span, midnight UTC start)
+  - `src/app/api/child/[id]/logic.ts` — re-exports `parseDateParam` and `buildDateWindow` from `../../dashboard/logic` via relative path (avoids `@/` alias which Vitest can't resolve without a config file)
+- **Files modified:**
+  - `src/app/api/child/[id]/route.ts` — replaced hardcoded "today" (`startOfDay`/`endOfDay` inline helpers) with `parseDateParam` + `buildDateWindow` from `./logic`; changed `lte` to `lt` to match the half-open interval pattern; renamed `_request` → `request` to read URL search params
+  - `src/app/(app)/child/[id]/page.tsx` — added `selectedDate` state (initialized to today); added `< [Label] >` date navigation arrows in the Today tab; `>` arrow disabled when viewing today; `fetchChild` now passes `?date=YYYY-MM-DD` when not viewing today; `setLoading(true)` on each fetch so navigation shows skeleton; dynamic "Today's Meals" / "Meals — {label}" heading; imported `subDays`, `addDays`, `isSameDay`, `toDateParam`, `formatDateLabel` from `@/app/api/dashboard/logic`
+- **Tests added:** `src/app/api/child/[id]/__tests__/date-filter.test.ts` (5 tests)
+- **All gates: PASS ✓**
+  - test: 11 files, 90 tests, 0 failures
+  - build: 36 routes, zero TypeScript errors
+  - lint: exit code 0 (warnings only, all pre-existing)
+- **Commit:** `633f6eb feat(b7-past-meals-history): add date navigation to child detail page with ?date= API support`
+
+### Decisions Made
+- **Re-export, don't duplicate** — `parseDateParam` and `buildDateWindow` already existed in `src/app/api/dashboard/logic.ts` from B4. Created a thin `logic.ts` in the child route directory that re-exports them via relative path. This keeps the test import (`from '../logic'`) matching the spec skeleton while avoiding any code duplication.
+- **Relative path in logic.ts** — Vitest has no config file in this project, so `@/` path aliases don't resolve at test time. All other test files use relative imports (`from '../logic'`). Used `../../dashboard/logic` (relative) in the re-export to stay consistent.
+- **`lte` → `lt` in Prisma filter** — Changed from the original `lte: todayEnd` (23:59:59.999) pattern to `lt: end` (midnight next day). This matches the spec's half-open interval (`gte: start, lt: end`) and the dashboard route pattern, and correctly handles meals logged at midnight.
+- **`setLoading(true)` on each navigation** — When the user navigates to a past date, the full skeleton shows briefly. This is consistent with the initial load UX. A future spec could add a more subtle in-place loading indicator, but that's out of scope here.
+- **Dynamic meals heading** — "Today's Meals" for today, "Meals — {label}" for past days (e.g., "Meals — Yesterday", "Meals — Mar 3"). Provides clear context without a heavy UI change.
+
+### Known Issues / Follow-up
+- The `title` field in `todayMeals` is present in the API response but not in the `ChildDetail` interface in `page.tsx`. This was pre-existing (not introduced by B7) — `MealList` renders the title from the prop shape it receives, which works correctly. A cleanup spec could align the interface.
+- `<img>` warning in page.tsx (line 275) is pre-existing and acceptable per project convention.
+- The weekly tab's `suggestions` API still doesn't accept a `?date=` param (pre-existing, noted in B4 context). Not in scope for B7.
+
+### Handoff Notes
+- **Next spec to implement:** B8 — Ingredient Constraints (`specs/features/phase1/b8-ingredient-constraints.md`)
+- `src/app/api/dashboard/logic.ts` remains the canonical source for all date utilities. Import via relative path in route-local `logic.ts` files (as done in B7) to keep Vitest resolvable.
+- Health gates are all green at `633f6eb`.
+
+---
+
 ## Session: b5-nutrition-targets — 2026-03-07
 
 ### What Was Done
@@ -144,7 +180,7 @@ After schema changes: `npx prisma migrate dev --name <description>` then `npx pr
 
 1. **B4: Day Navigation** ✅ SHIPPED — `667f71b`
 2. **B5: Nutrition Target Transparency** ✅ SHIPPED — `4d32b8c`
-3. **B7: Past Meals History** → `specs/features/phase1/b7-past-meals-history.md` — MEDIUM priority
+3. **B7: Past Meals History** ✅ SHIPPED — `633f6eb`
 4. **B8: Ingredient Constraints** → `specs/features/phase1/b8-ingredient-constraints.md` — MEDIUM priority
 
 **BLOCKED:** B6 (image editing bug) — needs clarification from Chris on which image flow is broken.
