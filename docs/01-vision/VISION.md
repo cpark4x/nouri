@@ -178,9 +178,7 @@ Nouri is built for Chris and his wife, tracking Mason and Charlotte.
 
 ### Secondary: Parents of Growing Active Kids (App Store)
 
-The problems Nouri solves are not unique to this household. Parents of growing kids — especially those in competitive youth sports or with specific lab results — face the same gaps.
-
-Publishing to the App Store serves two goals at once: it makes Nouri available to families who need it, and it creates a real, live product that demonstrates what an AI-native builder can ship. If other families use it and find it valuable, that's the secondary win. If they don't, V1 still succeeded.
+The problems Nouri solves are not unique to this household. Parents of growing kids — especially those in competitive youth sports or with specific lab results — face the same gaps. If other families find it on the App Store and use it, that's the secondary win.
 
 **What they need:** A tool that knows their specific child, not generic demographic averages.
 
