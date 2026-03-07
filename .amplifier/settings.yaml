@@ -1,0 +1,4 @@
+bundle:
+  added:
+    dev-machine: git+https://github.com/ramparte/amplifier-bundle-dev-machine@main
+  active: dev-machine
