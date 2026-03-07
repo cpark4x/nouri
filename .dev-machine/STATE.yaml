@@ -14,7 +14,6 @@ specs:
   directory: /Users/chrispark/Projects/nouri/specs
   architecture: /Users/chrispark/Projects/nouri/specs/architecture.md
   features:
-    - /Users/chrispark/Projects/nouri/specs/features/phase1/b4-day-navigation.md
     - /Users/chrispark/Projects/nouri/specs/features/phase1/b5-nutrition-targets.md
     - /Users/chrispark/Projects/nouri/specs/features/phase1/b7-past-meals-history.md
     - /Users/chrispark/Projects/nouri/specs/features/phase1/b8-ingredient-constraints.md
@@ -27,23 +26,41 @@ commands:
   e2e: "# N/A — no Playwright suite configured"
 
 health_gates:
-  last_checked: "2026-03-06"
+  last_checked: "2026-03-07"
   overall: PASS
   gates:
     - id: lint
       status: PASS
-      detail: "exit code 0; warnings on <img> usage (acceptable)"
+      detail: "exit code 0; warnings on <img> usage (acceptable); fixed pre-existing (session as any) casts"
     - id: test
       status: PASS
-      detail: "8 files, 55 tests, 0 failures"
+      detail: "9 files, 75 tests, 0 failures"
     - id: build
       status: PASS
-      detail: "25 routes compiled, zero TypeScript errors"
+      detail: "36 routes compiled, zero TypeScript errors"
     - id: e2e
       status: N/A
       detail: "No Playwright suite configured yet"
 
 recently_shipped:
+  - ref: "667f71b"
+    title: "B4: Day navigation on dashboard"
+    files:
+      - src/app/api/dashboard/logic.ts
+      - src/app/api/dashboard/__tests__/date-filter.test.ts
+      - src/app/api/dashboard/route.ts
+      - src/app/(app)/page.tsx
+      - src/components/dashboard/child-card.tsx
+      - eslint.config.mjs
+      - src/app/api/chat/history/route.ts
+      - src/app/api/chat/route.ts
+      - src/app/api/child/[id]/health-record/route.ts
+      - src/app/api/child/[id]/preferences/route.ts
+      - src/app/api/child/[id]/update/route.ts
+      - src/app/api/log/parse-family/route.ts
+      - src/app/api/log/parse-photo/route.ts
+      - src/app/api/log/parse/route.ts
+    tests_added: 20
   - ref: "#4"
     title: "AI meal title generation + smart input logging (B3)"
     files:
@@ -58,7 +75,7 @@ known_issues:
     description: "B6 (image editing bug) blocked pending clarification from Chris on which image flow is broken (A: meal photo, B: child profile photo, C: kitchen item)"
     resolution: "Ask Chris which specific image flow is broken, then implement"
   - id: lint-img-warnings
-    description: "ESLint warns on <img> usage (no-img-element) in 5 components"
+    description: "ESLint warns on <img> usage (no-img-element) in several components"
     resolution: "Acceptable for now — convert to next/image when implementing photo-related specs"
 
-last_session: null
+last_session: "2026-03-07"
