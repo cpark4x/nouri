@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nouri — UX Concepts v2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0a;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    padding: 48px 32px;
+    min-height: 100vh;
+  }
+  h1 { text-align: center; color: #fff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .subtitle { text-align: center; color: #555; font-size: 14px; margin-bottom: 12px; }
+  .note { text-align: center; color: #444; font-size: 13px; margin-bottom: 48px; font-style: italic; }
+
+  .concepts { display: flex; gap: 36px; justify-content: center; flex-wrap: wrap; align-items: flex-start; }
+  .concept { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .concept-label { color: #666; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+  .concept-title { color: #fff; font-size: 18px; font-weight: 700; text-align: center; margin-top: -8px; }
+  .concept-desc { color: #555; font-size: 12px; text-align: center; max-width: 260px; line-height: 1.5; }
+
+  /* iPhone shell */
+  .phone { width: 290px; height: 628px; background: #1c1c1e; border-radius: 46px; padding: 12px;
+    box-shadow: 0 0 0 1px #333, 0 40px 100px rgba(0,0,0,0.9), inset 0 0 0 1px #2a2a2a; position: relative; flex-shrink: 0; }
+  .screen { width: 100%; height: 100%; border-radius: 36px; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+
+  .island { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 90px; height: 28px; background: #000; border-radius: 20px; z-index: 10; }
+
+  .status-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 6px; flex-shrink: 0; }
+  .status-time { font-size: 15px; font-weight: 600; }
+  .status-icons { font-size: 11px; display: flex; gap: 4px; align-items: center; }
+
+  /* Shared day strip */
+  .day-strip { display: flex; gap: 4px; padding: 8px 14px; flex-shrink: 0; }
+  .day-chip { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; border-radius: 10px; padding: 6px 2px; cursor: pointer; }
+  .day-chip.today { background: #16a34a; }
+  .day-chip-label { font-size: 9px; font-weight: 600; letter-spacing: 0.3px; }
+  .day-chip-num { font-size: 13px; font-weight: 700; }
+
+  /* Bottom nav dark */
+  .bottom-nav-dark { display: flex; border-top: 1px solid rgba(255,255,255,0.08); padding: 8px 0 12px; flex-shrink: 0; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .nav-icon { font-size: 20px; line-height: 1; }
+  .nav-label { font-size: 9px; font-weight: 500; }
+
+  /* Meal slots row */
+  .meal-slots-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .ms { border-radius: 12px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; position: relative; }
+  .ms-icon { font-size: 14px; }
+  .ms-label { font-size: 8px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
+  .ms-val { font-size: 10px; font-weight: 600; }
+  .ms-check { position: absolute; top: 4px; right: 4px; font-size: 9px; }
+
+  /* ===================================
+     VARIANT A: STACKED DARK CARDS
+  =================================== */
+  .vA .screen { background: #0d1f0f; }
+  .vA .status-time { color: #fff; }
+  .vA .status-icons { color: #fff; }
+  .vA .day-chip-label { color: rgba(255,255,255,0.4); }
+  .vA .day-chip-num { color: rgba(255,255,255,0.5); }
+  .vA .day-chip.today .day-chip-label { color: #fff; }
+  .vA .day-chip.today .day-chip-num { color: #fff; }
+  .vA .nav-label { color: rgba(255,255,255,0.35); }
+  .vA .nav-item.active .nav-label { color: #4ade80; }
+
+  .vA-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 18px 0; flex-shrink: 0; }
+  .vA-logo { font-size: 20px; font-weight: 800; color: #4ade80; letter-spacing: -0.5px; }
+  .vA-date { font-size: 12px; color: rgba(255,255,255,0.35); font-weight: 500; }
+
+  .vA-content { flex: 1; overflow: hidden; padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  .kid-dark-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 14px; }
+  .kid-dark-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .kid-dark-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .kid-dark-name { font-size: 16px; font-weight: 800; color: #fff; }
+  .kid-dark-sub { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 1px; }
+  .kid-dark-cal { margin-left: auto; text-align: right; }
+  .kid-dark-cal-num { font-size: 20px; font-weight: 800; color: #4ade80; letter-spacing: -0.5px; line-height: 1; }
+  .kid-dark-cal-sub { font-size: 9px; color: rgba(255,255,255,0.3); margin-top: 1px; }
+
+  .cal-track { height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 10px; overflow: hidden; }
+  .cal-fill { height: 100%; border-radius: 2px; }
+
+  .ms.done-dark { background: rgba(22,163,74,0.15); border: 1px solid rgba(22,163,74,0.3); }
+  .ms.empty-dark { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+  .ms.done-dark .ms-label { color: rgba(74,222,128,0.7); }
+  .ms.done-dark .ms-val { color: #4ade80; }
+  .ms.empty-dark .ms-label { color: rgba(255,255,255,0.25); }
+  .ms.empty-dark .ms-val { color: rgba(255,255,255,0.2); }
+  .ms.done-dark .ms-icon { opacity: 0.9; }
+  .ms.empty-dark .ms-icon { opacity: 0.3; }
+
+  /* ===================================
+     VARIANT B: SPLIT SCREEN
+  =================================== */
+  .vB .screen { background: #0a0a0a; }
+  .vB .status-time { color: #fff; }
+  .vB .status-icons { color: #fff; }
+  .vB .day-chip-label { color: rgba(255,255,255,0.35); }
+  .vB .day-chip-num { color: rgba(255,255,255,0.45); }
+  .vB .day-chip.today .day-chip-label { color: #fff; }
+  .vB .day-chip.today .day-chip-num { color: #fff; }
+  .vB .nav-label { color: rgba(255,255,255,0.35); }
+  .vB .nav-item.active .nav-label { color: #4ade80; }
+
+  .vB-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 18px 0; flex-shrink: 0; }
+  .vB-logo { font-size: 20px; font-weight: 800; color: #4ade80; }
+
+  .vB-split { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0; overflow: hidden; }
+  .vB-kid { display: flex; flex-direction: column; padding: 10px 8px; overflow: hidden; }
+  .vB-kid:first-child { border-right: 1px solid rgba(255,255,255,0.06); background: #0d1a0d; }
+  .vB-kid:last-child { background: #0a0d1a; }
+
+  .vB-kid-name { font-size: 13px; font-weight: 800; color: #fff; text-align: center; margin-bottom: 2px; }
+  .vB-kid-emoji { font-size: 22px; text-align: center; margin-bottom: 4px; }
+  .vB-cal-big { font-size: 26px; font-weight: 800; letter-spacing: -1px; text-align: center; line-height: 1; margin-bottom: 2px; }
+  .vB-cal-sub { font-size: 9px; color: rgba(255,255,255,0.3); text-align: center; margin-bottom: 8px; }
+  .vB-track { height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 10px; overflow: hidden; }
+
+  .vB-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .vB-slot { border-radius: 10px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .vB-slot-icon { font-size: 12px; }
+  .vB-slot-label { font-size: 7px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
+  .vB-slot-val { font-size: 9px; font-weight: 600; }
+  .vB-slot.done { background: rgba(22,163,74,0.15); border: 1px solid rgba(22,163,74,0.25); }
+  .vB-slot.done .vB-slot-label { color: rgba(74,222,128,0.6); }
+  .vB-slot.done .vB-slot-val { color: #4ade80; }
+  .vB-slot.empty { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+  .vB-slot.empty .vB-slot-label { color: rgba(255,255,255,0.2); }
+  .vB-slot.empty .vB-slot-val { color: rgba(255,255,255,0.15); }
+  .vB-slot.empty .vB-slot-icon { opacity: 0.25; }
+
+  .vB-add { margin-top: auto; background: rgba(22,163,74,0.2); border: 1px solid rgba(22,163,74,0.3); border-radius: 12px; padding: 7px 4px; text-align: center; font-size: 20px; color: #4ade80; cursor: pointer; }
+
+  /* ===================================
+     VARIANT C: FOCUSED + MINI
+  =================================== */
+  .vC .screen { background: #0d1f0f; }
+  .vC .status-time { color: #fff; }
+  .vC .status-icons { color: #fff; }
+  .vC .day-chip-label { color: rgba(255,255,255,0.35); }
+  .vC .day-chip-num { color: rgba(255,255,255,0.45); }
+  .vC .day-chip.today .day-chip-label { color: #fff; }
+  .vC .day-chip.today .day-chip-num { color: #fff; }
+  .vC .nav-label { color: rgba(255,255,255,0.35); }
+  .vC .nav-item.active .nav-label { color: #4ade80; }
+
+  .vC-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 18px 0; flex-shrink: 0; }
+  .vC-logo { font-size: 20px; font-weight: 800; color: #4ade80; }
+  .vC-who { display: flex; gap: 6px; }
+  .vC-tab { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.3); padding: 4px 10px; border-radius: 10px; }
+  .vC-tab.active { background: rgba(22,163,74,0.2); color: #4ade80; }
+
+  .vC-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+  /* Primary kid — big */
+  .vC-primary { padding: 12px 16px 8px; background: transparent; }
+  .vC-primary-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .vC-primary-avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(255,255,255,0.07); }
+  .vC-primary-name { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  .vC-primary-sub { font-size: 11px; color: rgba(255,255,255,0.35); }
+  .vC-cal-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+  .vC-cal-big { font-size: 48px; font-weight: 800; color: #4ade80; letter-spacing: -2px; line-height: 1; }
+  .vC-cal-of { font-size: 14px; color: rgba(255,255,255,0.25); font-weight: 500; }
+  .vC-track { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
+  .vC-primary-slots { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 12px; }
+  .vC-slot { border-radius: 12px; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+  .vC-slot.done { background: rgba(22,163,74,0.15); border: 1px solid rgba(22,163,74,0.3); }
+  .vC-slot.empty { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); }
+  .vC-slot-icon { font-size: 14px; }
+  .vC-slot-label { font-size: 8px; font-weight: 700; text-transform: uppercase; }
+  .vC-slot-val { font-size: 10px; font-weight: 600; }
+  .vC-slot.done .vC-slot-label { color: rgba(74,222,128,0.7); }
+  .vC-slot.done .vC-slot-val { color: #4ade80; }
+  .vC-slot.empty .vC-slot-label { color: rgba(255,255,255,0.2); }
+  .vC-slot.empty .vC-slot-val { color: rgba(255,255,255,0.15); }
+  .vC-slot.empty .vC-slot-icon { opacity: 0.25; }
+  .vC-slot.done .vC-slot-icon { opacity: 1; }
+
+  /* Divider */
+  .vC-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 0 16px; }
+
+  /* Secondary kid — compact */
+  .vC-secondary { padding: 10px 16px; background: rgba(0,0,0,0.2); display: flex; align-items: center; gap: 12px; }
+  .vC-sec-avatar { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .vC-sec-info { flex: 1; }
+  .vC-sec-name { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); }
+  .vC-sec-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 4px; overflow: hidden; }
+  .vC-sec-bar-fill { height: 100%; border-radius: 2px; background: #f59e0b; }
+  .vC-sec-checks { display: flex; gap: 4px; }
+  .vC-sec-dot { width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 7px; }
+  .vC-sec-dot.done { background: rgba(22,163,74,0.3); color: #4ade80; }
+  .vC-sec-dot.empty { background: rgba(255,255,255,0.06); color: transparent; border: 1px solid rgba(255,255,255,0.1); }
+
+  /* ===================================
+     VARIANT D: TABBED COMMAND
+  =================================== */
+  .vD .screen { background: #0a0a0a; }
+  .vD .status-time { color: #fff; }
+  .vD .status-icons { color: #fff; }
+  .vD .day-chip-label { color: rgba(255,255,255,0.35); }
+  .vD .day-chip-num { color: rgba(255,255,255,0.45); }
+  .vD .day-chip.today .day-chip-label { color: #fff; }
+  .vD .day-chip.today .day-chip-num { color: #fff; }
+  .vD .nav-label { color: rgba(255,255,255,0.35); }
+  .vD .nav-item.active .nav-label { color: #4ade80; }
+
+  .vD-header { padding: 4px 16px 0; flex-shrink: 0; }
+  .vD-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .vD-logo { font-size: 20px; font-weight: 800; color: #4ade80; }
+
+  /* Kid toggle pills */
+  .kid-toggle { display: flex; background: rgba(255,255,255,0.06); border-radius: 14px; padding: 3px; gap: 3px; }
+  .kid-toggle-btn { flex: 1; padding: 6px 10px; border-radius: 11px; text-align: center; font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.35); cursor: pointer; }
+  .kid-toggle-btn.active { background: #16a34a; color: #fff; }
+
+  .vD-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 0 14px 8px; }
+
+  /* Big stats */
+  .vD-stats { display: flex; align-items: center; gap: 0; margin-bottom: 12px; padding: 12px 0 8px; }
+  .vD-big-cal { flex: 1; }
+  .vD-cal-label { font-size: 10px; color: rgba(255,255,255,0.3); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px; }
+  .vD-cal-num { font-size: 52px; font-weight: 800; color: #fff; letter-spacing: -3px; line-height: 1; }
+  .vD-cal-of { font-size: 13px; color: rgba(255,255,255,0.25); font-weight: 500; display: block; margin-top: 2px; }
+  .vD-arc-wrap { width: 64px; height: 64px; position: relative; flex-shrink: 0; }
+  .vD-arc { width: 64px; height: 64px; border-radius: 50%; background: conic-gradient(#16a34a 0% 60%, rgba(255,255,255,0.08) 60% 100%); display: flex; align-items: center; justify-content: center; }
+  .vD-arc::after { content: ''; width: 46px; height: 46px; background: #0a0a0a; border-radius: 50%; position: absolute; }
+  .vD-arc-text { position: absolute; z-index: 2; font-size: 13px; font-weight: 800; color: #4ade80; }
+
+  .vD-progress { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
+  .vD-progress-fill { height: 100%; background: linear-gradient(90deg, #16a34a, #4ade80); border-radius: 2px; box-shadow: 0 0 8px rgba(22,163,74,0.5); }
+
+  /* 4 meal slots 2x2 */
+  .vD-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .vD-slot { border-radius: 16px; padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; position: relative; }
+  .vD-slot.done { background: rgba(22,163,74,0.12); border: 1px solid rgba(22,163,74,0.25); }
+  .vD-slot.empty { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); }
+  .vD-slot-icon { font-size: 20px; }
+  .vD-slot-label { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+  .vD-slot-val { font-size: 13px; font-weight: 700; }
+  .vD-slot.done .vD-slot-label { color: rgba(74,222,128,0.6); }
+  .vD-slot.done .vD-slot-val { color: #4ade80; }
+  .vD-slot.empty .vD-slot-label { color: rgba(255,255,255,0.2); }
+  .vD-slot.empty .vD-slot-val { color: rgba(255,255,255,0.15); }
+  .vD-slot.empty .vD-slot-icon { opacity: 0.2; }
+  .vD-check { position: absolute; top: 10px; right: 10px; font-size: 12px; color: #4ade80; }
+
+  /* Other kid pill */
+  .vD-other-kid { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
+  .vD-ok-avatar { font-size: 16px; }
+  .vD-ok-name { font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 700; }
+  .vD-ok-bar { flex: 1; }
+  .vD-ok-track { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 3px; overflow: hidden; }
+  .vD-ok-fill { height: 100%; background: #f59e0b; border-radius: 2px; }
+  .vD-ok-kcal { font-size: 11px; font-weight: 700; color: #f59e0b; white-space: nowrap; }
+
+</style>
+</head>
+<body>
+
+<h1>Nouri — UX Concepts v2</h1>
+<p class="subtitle">Hybrid explorations · Dark aesthetic · Day strip · Tappable meal slots · Both kids</p>
+<p class="note">All 4 share the same core: dark Command aesthetic + week day strip + tappable meal slots (tap to view or log)</p>
+
+<div class="concepts">
+
+  <!-- ===== VARIANT A: STACKED DARK CARDS ===== -->
+  <div class="concept">
+    <div class="concept-label">Variant A</div>
+    <div class="concept-title">Stacked Cards</div>
+    <div class="phone vA">
+      <div class="island"></div>
+      <div class="screen">
+        <div class="status-bar"><span class="status-time" style="color:#fff">9:41</span><span class="status-icons" style="color:#fff">●●● 5G 🔋</span></div>
+        <div class="vA-header"><span class="vA-logo">nouri</span><span class="vA-date">Mon, Mar 2</span></div>
+        <div class="day-strip">
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Fri</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">28</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Sat</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">1</div></div>
+          <div class="day-chip today"><div class="day-chip-label" style="color:#fff">Mon</div><div class="day-chip-num" style="color:#fff">2</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Tue</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">3</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Wed</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">4</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Thu</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">5</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Fri</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">6</div></div>
+        </div>
+        <div class="vA-content">
+
+          <!-- Mason -->
+          <div class="kid-dark-card">
+            <div class="kid-dark-header">
+              <div class="kid-dark-avatar" style="background:rgba(22,163,74,0.15)">🏒</div>
+              <div>
+                <div class="kid-dark-name">Mason</div>
+                <div class="kid-dark-sub">Hockey today · 12 yrs</div>
+              </div>
+              <div class="kid-dark-cal">
+                <div class="kid-dark-cal-num">1,450</div>
+                <div class="kid-dark-cal-sub">/ 2,400 kcal</div>
+              </div>
+            </div>
+            <div class="cal-track"><div class="cal-fill" style="width:60%;background:linear-gradient(90deg,#16a34a,#4ade80)"></div></div>
+            <div class="meal-slots-row">
+              <div class="ms done-dark"><div class="ms-icon">🌅</div><div class="ms-label">Bfast</div><div class="ms-val">520</div><div class="ms-check">✓</div></div>
+              <div class="ms done-dark"><div class="ms-icon">☀️</div><div class="ms-label">Lunch</div><div class="ms-val">680</div><div class="ms-check">✓</div></div>
+              <div class="ms empty-dark"><div class="ms-icon">🌤</div><div class="ms-label">Snack</div><div class="ms-val">+ log</div></div>
+              <div class="ms empty-dark"><div class="ms-icon">🌙</div><div class="ms-label">Dinner</div><div class="ms-val">+ log</div></div>
+            </div>
+          </div>
+
+          <!-- Charlotte -->
+          <div class="kid-dark-card">
+            <div class="kid-dark-header">
+              <div class="kid-dark-avatar" style="background:rgba(236,72,153,0.15)">🤸</div>
+              <div>
+                <div class="kid-dark-name">Charlotte</div>
+                <div class="kid-dark-sub">Gymnastics today · 8 yrs</div>
+              </div>
+              <div class="kid-dark-cal">
+                <div class="kid-dark-cal-num" style="color:#f59e0b">620</div>
+                <div class="kid-dark-cal-sub">/ 1,800 kcal</div>
+              </div>
+            </div>
+            <div class="cal-track"><div class="cal-fill" style="width:34%;background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div></div>
+            <div class="meal-slots-row">
+              <div class="ms done-dark" style="background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.25)"><div class="ms-icon">🌅</div><div class="ms-label" style="color:rgba(251,191,36,0.7)">Bfast</div><div class="ms-val" style="color:#fbbf24">310</div><div class="ms-check" style="color:#fbbf24">✓</div></div>
+              <div class="ms empty-dark"><div class="ms-icon">☀️</div><div class="ms-label">Lunch</div><div class="ms-val">+ log</div></div>
+              <div class="ms empty-dark"><div class="ms-icon">🌤</div><div class="ms-label">Snack</div><div class="ms-val">+ log</div></div>
+              <div class="ms empty-dark"><div class="ms-icon">🌙</div><div class="ms-label">Dinner</div><div class="ms-val">+ log</div></div>
+            </div>
+          </div>
+
+        </div>
+        <div class="bottom-nav-dark">
+          <div class="nav-item active"><div class="nav-icon">🏠</div><div class="nav-label" style="color:#4ade80">Home</div></div>
+          <div class="nav-item"><div class="nav-icon">💬</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">Chat</div></div>
+          <div class="nav-item"><div class="nav-icon">📖</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">History</div></div>
+          <div class="nav-item"><div class="nav-icon">⚙️</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">Settings</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="concept-desc">Both kids always visible. Scroll down to see more detail. Clean, familiar — just dark.</div>
+  </div>
+
+  <!-- ===== VARIANT B: SPLIT SCREEN ===== -->
+  <div class="concept">
+    <div class="concept-label">Variant B</div>
+    <div class="concept-title">Side by Side</div>
+    <div class="phone vB">
+      <div class="island"></div>
+      <div class="screen">
+        <div class="status-bar"><span class="status-time" style="color:#fff">9:41</span><span class="status-icons" style="color:#fff">●●● 5G 🔋</span></div>
+        <div class="vB-header"><span class="vB-logo">nouri</span><span style="font-size:12px;color:rgba(255,255,255,0.3)">Mon, Mar 2</span></div>
+        <div class="day-strip">
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Fri</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">28</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Sat</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">1</div></div>
+          <div class="day-chip today"><div class="day-chip-label" style="color:#fff">Mon</div><div class="day-chip-num" style="color:#fff">2</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Tue</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">3</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Wed</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">4</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Thu</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">5</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Fri</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">6</div></div>
+        </div>
+        <div class="vB-split">
+          <!-- Mason -->
+          <div class="vB-kid">
+            <div class="vB-kid-emoji">🏒</div>
+            <div class="vB-kid-name">Mason</div>
+            <div class="vB-cal-big" style="color:#4ade80">1,450</div>
+            <div class="vB-cal-sub">/ 2,400 kcal</div>
+            <div class="vB-track"><div style="width:60%;height:100%;background:#16a34a;border-radius:2px"></div></div>
+            <div class="vB-slots">
+              <div class="vB-slot done"><div class="vB-slot-icon">🌅</div><div class="vB-slot-label">Bfast</div><div class="vB-slot-val">520</div></div>
+              <div class="vB-slot done"><div class="vB-slot-icon">☀️</div><div class="vB-slot-label">Lunch</div><div class="vB-slot-val">680</div></div>
+              <div class="vB-slot empty"><div class="vB-slot-icon">🌤</div><div class="vB-slot-label">Snack</div><div class="vB-slot-val" style="color:rgba(255,255,255,0.15)">+</div></div>
+              <div class="vB-slot empty"><div class="vB-slot-icon">🌙</div><div class="vB-slot-label">Dinner</div><div class="vB-slot-val" style="color:rgba(255,255,255,0.15)">+</div></div>
+            </div>
+            <div class="vB-add">+</div>
+          </div>
+          <!-- Charlotte -->
+          <div class="vB-kid">
+            <div class="vB-kid-emoji">🤸</div>
+            <div class="vB-kid-name">Charlotte</div>
+            <div class="vB-cal-big" style="color:#f59e0b">620</div>
+            <div class="vB-cal-sub">/ 1,800 kcal</div>
+            <div class="vB-track"><div style="width:34%;height:100%;background:#f59e0b;border-radius:2px"></div></div>
+            <div class="vB-slots">
+              <div class="vB-slot done" style="background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.25)"><div class="vB-slot-icon">🌅</div><div class="vB-slot-label" style="color:rgba(251,191,36,0.6)">Bfast</div><div class="vB-slot-val" style="color:#fbbf24">310</div></div>
+              <div class="vB-slot empty"><div class="vB-slot-icon">☀️</div><div class="vB-slot-label">Lunch</div><div class="vB-slot-val" style="color:rgba(255,255,255,0.15)">+</div></div>
+              <div class="vB-slot empty"><div class="vB-slot-icon">🌤</div><div class="vB-slot-label">Snack</div><div class="vB-slot-val" style="color:rgba(255,255,255,0.15)">+</div></div>
+              <div class="vB-slot empty"><div class="vB-slot-icon">🌙</div><div class="vB-slot-label">Dinner</div><div class="vB-slot-val" style="color:rgba(255,255,255,0.15)">+</div></div>
+            </div>
+            <div class="vB-add" style="border-color:rgba(245,158,11,0.3);color:#f59e0b;background:rgba(245,158,11,0.15)">+</div>
+          </div>
+        </div>
+        <div class="bottom-nav-dark">
+          <div class="nav-item active"><div class="nav-icon">🏠</div><div class="nav-label" style="color:#4ade80">Home</div></div>
+          <div class="nav-item"><div class="nav-icon">💬</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">Chat</div></div>
+          <div class="nav-item"><div class="nav-icon">📖</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">History</div></div>
+          <div class="nav-item"><div class="nav-icon">⚙️</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">Settings</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="concept-desc">Both kids split 50/50. Most compact — see everything without scrolling.</div>
+  </div>
+
+  <!-- ===== VARIANT C: FOCUSED + MINI ===== -->
+  <div class="concept">
+    <div class="concept-label">Variant C</div>
+    <div class="concept-title">Focus + Peek</div>
+    <div class="phone vC">
+      <div class="island"></div>
+      <div class="screen">
+        <div class="status-bar"><span class="status-time" style="color:#fff">9:41</span><span class="status-icons" style="color:#fff">●●● 5G 🔋</span></div>
+        <div class="vC-header">
+          <span class="vC-logo">nouri</span>
+          <div class="vC-who">
+            <div class="vC-tab active">Mason</div>
+            <div class="vC-tab">Charlotte</div>
+          </div>
+        </div>
+        <div class="day-strip">
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Fri</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">28</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Sat</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">1</div></div>
+          <div class="day-chip today"><div class="day-chip-label" style="color:#fff">Mon</div><div class="day-chip-num" style="color:#fff">2</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Tue</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">3</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Wed</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">4</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Thu</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">5</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Fri</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">6</div></div>
+        </div>
+        <div class="vC-content">
+          <!-- Primary: Mason -->
+          <div class="vC-primary">
+            <div class="vC-primary-header">
+              <div class="vC-primary-avatar">🏒</div>
+              <div>
+                <div class="vC-primary-name">Mason</div>
+                <div class="vC-primary-sub">Hockey today · 12 yrs</div>
+              </div>
+            </div>
+            <div class="vC-cal-row">
+              <div class="vC-cal-big">1,450</div>
+              <div class="vC-cal-of">/ 2,400 kcal</div>
+            </div>
+            <div class="vC-track"><div style="width:60%;height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:2px;box-shadow:0 0 8px rgba(22,163,74,0.4)"></div></div>
+            <div class="vC-primary-slots">
+              <div class="vC-slot done"><div class="vC-slot-icon">🌅</div><div class="vC-slot-label">Bfast</div><div class="vC-slot-val" style="color:#4ade80">520</div></div>
+              <div class="vC-slot done"><div class="vC-slot-icon">☀️</div><div class="vC-slot-label">Lunch</div><div class="vC-slot-val" style="color:#4ade80">680</div></div>
+              <div class="vC-slot empty"><div class="vC-slot-icon">🌤</div><div class="vC-slot-label">Snack</div><div class="vC-slot-val" style="color:rgba(255,255,255,0.2)">+ log</div></div>
+              <div class="vC-slot empty"><div class="vC-slot-icon">🌙</div><div class="vC-slot-label">Dinner</div><div class="vC-slot-val" style="color:rgba(255,255,255,0.2)">+ log</div></div>
+            </div>
+          </div>
+          <div class="vC-divider"></div>
+          <!-- Secondary: Charlotte peek -->
+          <div class="vC-secondary">
+            <div class="vC-sec-avatar">🤸</div>
+            <div class="vC-sec-info">
+              <div class="vC-sec-name">Charlotte · 620 / 1,800</div>
+              <div class="vC-sec-bar"><div class="vC-sec-bar-fill" style="width:34%"></div></div>
+            </div>
+            <div class="vC-sec-checks">
+              <div class="vC-sec-dot done">✓</div>
+              <div class="vC-sec-dot empty"></div>
+              <div class="vC-sec-dot empty"></div>
+              <div class="vC-sec-dot empty"></div>
+            </div>
+          </div>
+        </div>
+        <div class="bottom-nav-dark">
+          <div class="nav-item active"><div class="nav-icon">🏠</div><div class="nav-label" style="color:#4ade80">Home</div></div>
+          <div class="nav-item"><div class="nav-icon">💬</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">Chat</div></div>
+          <div class="nav-item"><div class="nav-icon">📖</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">History</div></div>
+          <div class="nav-item"><div class="nav-icon">⚙️</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">Settings</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="concept-desc">One kid in focus with full stats. Other kid visible as a compact peek strip below. Tap name to switch.</div>
+  </div>
+
+  <!-- ===== VARIANT D: TABBED COMMAND ===== -->
+  <div class="concept">
+    <div class="concept-label">Variant D</div>
+    <div class="concept-title">Tabbed Command</div>
+    <div class="phone vD">
+      <div class="island"></div>
+      <div class="screen">
+        <div class="status-bar"><span class="status-time" style="color:#fff">9:41</span><span class="status-icons" style="color:#fff">●●● 5G 🔋</span></div>
+        <div class="vD-header">
+          <div class="vD-top">
+            <span class="vD-logo">nouri</span>
+            <div class="kid-toggle">
+              <div class="kid-toggle-btn active">Mason</div>
+              <div class="kid-toggle-btn">Charlotte</div>
+            </div>
+          </div>
+        </div>
+        <div class="day-strip">
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Fri</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">28</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Sat</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">1</div></div>
+          <div class="day-chip today"><div class="day-chip-label" style="color:#fff">Mon</div><div class="day-chip-num" style="color:#fff">2</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Tue</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">3</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Wed</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">4</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Thu</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">5</div></div>
+          <div class="day-chip"><div class="day-chip-label" style="color:rgba(255,255,255,0.3)">Fri</div><div class="day-chip-num" style="color:rgba(255,255,255,0.4)">6</div></div>
+        </div>
+        <div class="vD-content">
+          <div class="vD-stats">
+            <div class="vD-big-cal">
+              <div class="vD-cal-label">Calories Today</div>
+              <div class="vD-cal-num">1,450</div>
+              <span class="vD-cal-of">of 2,400 kcal</span>
+            </div>
+            <div class="vD-arc-wrap">
+              <div class="vD-arc"></div>
+              <div class="vD-arc-text">60%</div>
+            </div>
+          </div>
+          <div class="vD-progress"><div class="vD-progress-fill" style="width:60%"></div></div>
+          <div class="vD-slots">
+            <div class="vD-slot done">
+              <div class="vD-slot-icon">🌅</div>
+              <div class="vD-slot-label">Breakfast</div>
+              <div class="vD-slot-val">520 kcal</div>
+              <div class="vD-check">✓</div>
+            </div>
+            <div class="vD-slot done">
+              <div class="vD-slot-icon">☀️</div>
+              <div class="vD-slot-label">Lunch</div>
+              <div class="vD-slot-val">680 kcal</div>
+              <div class="vD-check">✓</div>
+            </div>
+            <div class="vD-slot empty">
+              <div class="vD-slot-icon">🌤</div>
+              <div class="vD-slot-label">Snack</div>
+              <div class="vD-slot-val">Tap to log</div>
+            </div>
+            <div class="vD-slot empty">
+              <div class="vD-slot-icon">🌙</div>
+              <div class="vD-slot-label">Dinner</div>
+              <div class="vD-slot-val">Tap to log</div>
+            </div>
+          </div>
+          <!-- Other kid -->
+          <div class="vD-other-kid">
+            <div class="vD-ok-avatar">🤸</div>
+            <div class="vD-ok-bar">
+              <div class="vD-ok-name">Charlotte</div>
+              <div class="vD-ok-track"><div class="vD-ok-fill" style="width:34%"></div></div>
+            </div>
+            <div class="vD-ok-kcal">620 / 1,800</div>
+          </div>
+        </div>
+        <div class="bottom-nav-dark">
+          <div class="nav-item active"><div class="nav-icon">🏠</div><div class="nav-label" style="color:#4ade80">Home</div></div>
+          <div class="nav-item"><div class="nav-icon">💬</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">Chat</div></div>
+          <div class="nav-item"><div class="nav-icon">📖</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">History</div></div>
+          <div class="nav-item"><div class="nav-icon">⚙️</div><div class="nav-label" style="color:rgba(255,255,255,0.3)">Settings</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="concept-desc">One kid at a time — full Command aesthetic. Toggle between Mason ↔ Charlotte. Other kid shown as a compact bar at the bottom.</div>
+  </div>
+
+</div>
+</body>
+</html>

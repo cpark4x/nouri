@@ -1,0 +1,38 @@
+# Feature Archive — Completed Specs
+# Full history of all shipped features with notes
+
+features:
+  - ref: "#1"
+    title: "M1: Foundation — auth, dashboard, child profiles, meal logging core"
+    phase: m1
+    shipped: "2026-02-25"
+    tests: 0
+    notes: "Initial build. All M1 features including dashboard, child detail, basic meal log."
+
+  - ref: "#2"
+    title: "M2: AI Chat, profile editing, food preferences, health records"
+    phase: m2
+    shipped: "2026-02-26"
+    tests: 0
+    notes: "Ask Nouri chat, child profile edit, food preferences UI."
+
+  - ref: "#3"
+    title: "M3: Recipe library, weekly charts, AI insights"
+    phase: m3
+    shipped: "2026-02-26"
+    tests: 0
+    notes: "Recipe CRUD, URL scraper, weekly chart, AI weekly insight, kitchen calibration."
+
+  - ref: "feedback-sprint-1"
+    title: "B1+B2: Meal tips, meal editing, goal gap suggestions, mealType fixes"
+    phase: feedback
+    shipped: "2026-02-26"
+    tests: 30  # approximate
+    notes: "Per-meal AI tips, meal editing with re-parse, AI goal gap suggestions on dashboard, mealType normalization, serverless hang prevention."
+
+  - ref: "#4"
+    title: "B3: AI meal title generation + smart input logging"
+    phase: feedback
+    shipped: "2026-02-27"
+    tests: 55
+    notes: "ParsedMeal.title + cleanDescription fields, MealLog.title column (migration), smart input box redesign with time-of-day inference, tappable meal type pill, photo inline in textarea."

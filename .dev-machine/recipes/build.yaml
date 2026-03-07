@@ -1,0 +1,368 @@
+# =============================================================================
+# NOURI DEV MACHINE — OUTER BUILD LOOP
+# =============================================================================
+#
+# Drives automated feature development for the Nouri project.
+#
+# Pattern:
+#   1. Read STATE.yaml → find next unimplemented spec
+#   2. Dispatch a fresh implementation session to build it (TDD)
+#   3. Update STATE.yaml → loop back to (1)
+#   4. Repeat until all phase-1 specs are shipped or the safety limit is hit
+#
+# Required agents:
+#   - foundation:file-ops       (reads STATE.yaml to find the next spec)
+#   - foundation:zen-architect  (dispatches fresh implementation sessions)
+#
+# Context files read by each implementation session:
+#   /Users/chrispark/Projects/nouri/.dev-machine/working-session-instructions.md
+#   /Users/chrispark/Projects/nouri/.dev-machine/STATE.yaml
+#   /Users/chrispark/Projects/nouri/.dev-machine/CONTEXT-TRANSFER.md
+#   /Users/chrispark/Projects/nouri/docs/architecture.md  (if present)
+#   <the specific spec file being implemented>
+#
+# STATE.yaml contract (required structure):
+#   specs:
+#     features:           # Full list of spec paths to implement
+#       - /path/to/spec1.yaml
+#       - /path/to/spec2.yaml
+#   recently_shipped:     # Specs already completed (recipe adds here each iteration)
+#     - /path/to/spec1.yaml
+#
+# Usage:
+#   amplifier recipes execute .dev-machine/recipes/build.yaml
+#
+# Safety: max 10 iterations (set max_while_iterations below to override)
+# =============================================================================
+
+name: "nouri-dev-machine-build"
+description: >
+  Outer build loop for the Nouri family nutrition app. Reads STATE.yaml to
+  discover the next unimplemented phase-1 feature spec, dispatches a fresh
+  TDD implementation session, and repeats until all specs are shipped.
+version: "1.0.0"
+author: "Nouri Dev Machine"
+created: "2026-03-06T00:00:00Z"
+tags: ["dev-machine", "nouri", "build-loop", "nextjs", "typescript", "tdd"]
+
+# ---------------------------------------------------------------------------
+# Initial context
+# All path variables use absolute paths — never change these.
+# loop_done is managed by the loop; do not set it manually.
+# ---------------------------------------------------------------------------
+context:
+  # Loop state (managed automatically)
+  loop_done: ""
+
+  # Absolute paths — frozen for this project
+  project_root:           "/Users/chrispark/Projects/nouri"
+  dev_machine_dir:        "/Users/chrispark/Projects/nouri/.dev-machine"
+  state_file:             "/Users/chrispark/Projects/nouri/.dev-machine/STATE.yaml"
+  context_transfer_file:  "/Users/chrispark/Projects/nouri/.dev-machine/CONTEXT-TRANSFER.md"
+  instructions_file:      "/Users/chrispark/Projects/nouri/.dev-machine/working-session-instructions.md"
+  architecture_file:      "/Users/chrispark/Projects/nouri/docs/architecture.md"
+  specs_dir:              "/Users/chrispark/Projects/nouri/specs/features/phase1"
+
+steps:
+
+  # ===========================================================================
+  # STEP 1: BUILD LOOP
+  # Iterates until spec_result.spec_path == "DONE" or max_while_iterations hit.
+  # Each iteration: (a) find next spec → (b) implement it.
+  # ===========================================================================
+  - id: "build-loop"
+    type: "bash"
+    command: "echo 'loop-iteration-complete'"   # body replaced by while_steps each iteration
+    while_condition: "{{loop_done}} != 'DONE'"
+    max_while_iterations: 10
+
+    while_steps:
+
+      # -----------------------------------------------------------------------
+      # 1a. FIND NEXT SPEC
+      # Reads STATE.yaml and returns the first spec in specs.features that is
+      # NOT already in recently_shipped.  Returns "DONE" when all are shipped.
+      # -----------------------------------------------------------------------
+      - id: "find-next-spec"
+        agent: "foundation:file-ops"
+        parse_json: true
+        timeout: 120
+        prompt: |
+          You must read a YAML file and return a single JSON object. Follow
+          these steps exactly.
+
+          STEP 1 — Read this file in its entirety:
+            /Users/chrispark/Projects/nouri/.dev-machine/STATE.yaml
+
+          STEP 2 — Locate these two fields:
+            • specs.features      — an ordered list of spec file paths to build
+            • recently_shipped    — a list of spec file paths already completed
+
+          STEP 3 — Find the FIRST path in specs.features that does NOT appear
+          anywhere in recently_shipped. That is the next spec to implement.
+
+          STEP 4 — Return ONLY a raw JSON object with NO markdown fences, NO
+          prose, NO extra whitespace before or after the JSON. Use EXACTLY this
+          structure:
+
+          When there is a spec to implement:
+          {
+            "spec_path": "<absolute path to the spec file, exactly as it appears in specs.features>",
+            "spec_name": "<filename without directory, without extension>",
+            "done": "false"
+          }
+
+          When every spec in specs.features already appears in recently_shipped:
+          {
+            "spec_path": "DONE",
+            "spec_name": "DONE",
+            "done": "true"
+          }
+
+          Output ONLY the JSON object. Nothing else.
+        output: "spec_result"
+
+      # -----------------------------------------------------------------------
+      # 1b. IMPLEMENT SPEC
+      # Skipped automatically when spec_result.spec_path == "DONE".
+      # Dispatched as a fresh session (context_depth: none) so the agent
+      # starts clean and reads all context files itself.
+      # -----------------------------------------------------------------------
+      - id: "implement-spec"
+        condition: "{{spec_result.spec_path}} != 'DONE'"
+        agent: "foundation:zen-architect"
+        mode: "ARCHITECT"
+        timeout: 3600   # 60 min — complex TDD cycles can take a while
+        agent_config:
+          context_depth: "none"   # Fresh session: no inherited conversation history
+        prompt: |
+          You are a full-stack Next.js / TypeScript engineer working on Nouri,
+          a family nutrition intelligence app. This is a FRESH session — you
+          have no prior context. Read ALL required files before touching code.
+
+          ════════════════════════════════════════════════════════════════════
+          SPEC TO IMPLEMENT
+          ════════════════════════════════════════════════════════════════════
+          Spec file:  {{spec_result.spec_path}}
+          Spec name:  {{spec_result.spec_name}}
+          Project:    /Users/chrispark/Projects/nouri
+
+          ════════════════════════════════════════════════════════════════════
+          PHASE 0 — READ CONTEXT (mandatory, do this before anything else)
+          ════════════════════════════════════════════════════════════════════
+          Read each of these files completely, in order:
+
+          1. /Users/chrispark/Projects/nouri/.dev-machine/working-session-instructions.md
+             → Coding standards, commit conventions, definition of done.
+             → Follow these rules for the entire session.
+
+          2. /Users/chrispark/Projects/nouri/.dev-machine/STATE.yaml
+             → Project state, current sprint, blockers, and session notes.
+
+          3. /Users/chrispark/Projects/nouri/.dev-machine/CONTEXT-TRANSFER.md
+             → What the previous session did, handoff notes, known gotchas.
+             → If the file doesn't exist yet, skip it and continue.
+
+          4. /Users/chrispark/Projects/nouri/docs/architecture.md
+             → System architecture, data models, API patterns.
+             → If the file doesn't exist, check docs/plans/ for the design doc.
+
+          5. {{spec_result.spec_path}}
+             → THE SPEC. Read it carefully. Extract every acceptance criterion.
+
+          Then survey the relevant source code:
+          • src/app/ — Next.js App Router pages and API routes
+          • src/lib/ — Shared utilities, AI providers, Prisma client
+          • src/components/ — Reusable UI components
+          • prisma/schema.prisma — Data model
+          • package.json — Available scripts and dependencies
+          • eslint.config.mjs — Lint rules to follow
+
+          ════════════════════════════════════════════════════════════════════
+          PHASE 1 — RED (write failing tests first)
+          ════════════════════════════════════════════════════════════════════
+          • Create test file(s) for the spec's acceptance criteria.
+          • Follow the existing co-located pattern: place tests in a
+            __tests__/ directory adjacent to the code being tested.
+          • Use Vitest (already installed). Match the import style in
+            existing test files.
+          • Each acceptance criterion from the spec must have at least one test.
+          • Run tests and confirm the NEW tests FAIL:
+              cd /Users/chrispark/Projects/nouri && npm test
+          • Existing tests must still pass (or note any pre-existing failures).
+
+          ════════════════════════════════════════════════════════════════════
+          PHASE 2 — GREEN (make the failing tests pass)
+          ════════════════════════════════════════════════════════════════════
+          • Implement the minimum code to satisfy the spec.
+          • Tech stack: Next.js 16, TypeScript strict mode, Tailwind CSS 4,
+            Prisma 7, NextAuth 4, React 19.
+          • Follow the patterns already established in the codebase.
+            Do NOT introduce new dependencies unless the spec requires them.
+          • Run tests:
+              cd /Users/chrispark/Projects/nouri && npm test
+          • ALL tests (new + existing) must pass before proceeding.
+          • Fix any regressions introduced by your changes.
+
+          ════════════════════════════════════════════════════════════════════
+          PHASE 3 — REFACTOR (clean up without breaking tests)
+          ════════════════════════════════════════════════════════════════════
+          • Remove dead code. Improve naming. Add comments for non-obvious logic.
+          • Keep changes to the absolute minimum needed for clarity.
+          • Run tests again to confirm nothing broke:
+              cd /Users/chrispark/Projects/nouri && npm test
+
+          ════════════════════════════════════════════════════════════════════
+          PHASE 4 — QUALITY GATES (all three must pass before commit)
+          ════════════════════════════════════════════════════════════════════
+          Gate 1 — Tests:
+              cd /Users/chrispark/Projects/nouri && npm test
+              Exit code must be 0. Fix any failures.
+
+          Gate 2 — Build:
+              cd /Users/chrispark/Projects/nouri && npm run build
+              Exit code must be 0. Fix TypeScript and Next.js build errors.
+              (Build output goes to .next/ — this validates the full type graph.)
+
+          Gate 3 — Lint:
+              cd /Users/chrispark/Projects/nouri && npm run lint
+              Exit code must be 0. Fix ESLint errors. Warnings are acceptable.
+
+          Do NOT proceed to commit if any gate fails.
+
+          ════════════════════════════════════════════════════════════════════
+          PHASE 5 — COMMIT
+          ════════════════════════════════════════════════════════════════════
+          Stage all changes:
+              cd /Users/chrispark/Projects/nouri && git add -A
+
+          Commit with a conventional commit message:
+              git commit -m "feat({{spec_result.spec_name}}): <concise imperative description>"
+
+          Examples of good commit messages:
+            feat(meal-logging): add photo upload with AI nutrition extraction
+            feat(dashboard): show weekly nutrition summary per child
+            feat(auth): add family invite flow with email verification
+
+          Attempt to push:
+              git push
+          If push fails (e.g. branch protection), commit locally and note it
+          in CONTEXT-TRANSFER.md.
+
+          ════════════════════════════════════════════════════════════════════
+          PHASE 6 — UPDATE STATE.yaml
+          ════════════════════════════════════════════════════════════════════
+          File: /Users/chrispark/Projects/nouri/.dev-machine/STATE.yaml
+
+          Make these changes atomically (read → modify → write):
+          1. Remove {{spec_result.spec_path}} from specs.features list.
+          2. Add {{spec_result.spec_path}} to recently_shipped list.
+          3. Update last_session timestamp to now.
+          4. Add any relevant notes (blockers discovered, decisions made).
+
+          Only do this AFTER all quality gates pass and the commit is made.
+
+          ════════════════════════════════════════════════════════════════════
+          PHASE 7 — UPDATE CONTEXT-TRANSFER.md
+          ════════════════════════════════════════════════════════════════════
+          File: /Users/chrispark/Projects/nouri/.dev-machine/CONTEXT-TRANSFER.md
+
+          Prepend a new session entry (keep previous entries below):
+
+          ## Session: {{spec_result.spec_name}} — <date>
+
+          ### What Was Done
+          - Spec implemented: {{spec_result.spec_path}}
+          - Files changed: <list every file created or modified>
+          - Tests added: <list test files and what they cover>
+          - All gates: PASS ✓
+
+          ### Decisions Made
+          <Any non-obvious choices and why you made them>
+
+          ### Known Issues / Follow-up
+          <Anything the next session should be aware of>
+
+          ### Handoff Notes
+          <What the next session should do first>
+
+          ════════════════════════════════════════════════════════════════════
+          CONSTRAINTS
+          ════════════════════════════════════════════════════════════════════
+          • Never skip Phase 0 context reads — previous sessions leave critical notes.
+          • Never commit if any quality gate fails.
+          • Never update STATE.yaml before all gates pass and the commit is made.
+          • Never modify files outside /Users/chrispark/Projects/nouri.
+          • Never introduce a new npm dependency without the spec requiring it.
+          • Always use the existing Vitest setup — do not add Jest or other runners.
+          • Always follow the ESLint config in eslint.config.mjs exactly.
+
+          ════════════════════════════════════════════════════════════════════
+          RETURN VALUE
+          ════════════════════════════════════════════════════════════════════
+          When complete, return a brief plain-text summary:
+
+          SPEC COMPLETED: {{spec_result.spec_name}}
+          FILES CHANGED:  <comma-separated list>
+          TESTS ADDED:    <comma-separated list>
+          GATES:          tests=PASS  build=PASS  lint=PASS
+          COMMIT:         <git short hash and subject line>
+        output: "impl_result"
+
+    # After each iteration: propagate the spec path so break_when can read it
+    update_context:
+      loop_done: "{{spec_result.spec_path}}"
+
+    # Exit the loop immediately when the finder returns "DONE"
+    break_when: "{{spec_result.spec_path}} == 'DONE'"
+
+  # ===========================================================================
+  # STEP 2: BUILD SUMMARY
+  # Runs after the loop exits (all specs shipped or limit reached).
+  # Reads STATE.yaml and CONTEXT-TRANSFER.md to produce a final report.
+  # ===========================================================================
+  - id: "build-summary"
+    agent: "foundation:file-ops"
+    timeout: 180
+    prompt: |
+      Read both of these files completely:
+
+      1. /Users/chrispark/Projects/nouri/.dev-machine/STATE.yaml
+      2. /Users/chrispark/Projects/nouri/.dev-machine/CONTEXT-TRANSFER.md
+
+      Then produce a Markdown build summary using EXACTLY this template
+      (fill in all <placeholders> with real data from the files):
+
+      ---
+
+      # Nouri Dev Machine — Build Run Complete
+
+      **Date:** <today>
+      **Project:** Nouri — /Users/chrispark/Projects/nouri
+
+      ## Specs Shipped This Run
+
+      | # | Spec | Status |
+      |---|------|--------|
+      <one row per entry in recently_shipped from STATE.yaml>
+
+      ## Remaining Work
+
+      <If specs.features in STATE.yaml is now empty, write "Phase 1 complete — all specs shipped.">
+      <Otherwise, list the remaining specs with their paths.>
+
+      ## Session Handoff
+
+      <Key points from the most recent entry in CONTEXT-TRANSFER.md — what
+      was done, any blockers, and what the next session should do first.>
+
+      ## Next Steps
+
+      <If there are remaining specs: "Run build.yaml again to continue."
+       If phase 1 is complete: "Run verify.yaml for final health gate check,
+       then proceed to phase 2 planning.">
+
+      ---
+
+      Return the full Markdown text above as your response.
+    output: "build_report"

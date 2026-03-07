@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nouri — UX Concepts</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0f0f0f;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    padding: 48px 32px;
+    min-height: 100vh;
+  }
+  h1 {
+    text-align: center;
+    color: #fff;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 15px;
+    margin-bottom: 52px;
+  }
+  .concepts {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .concept {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .concept-label {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  .concept-title {
+    color: #fff;
+    font-size: 17px;
+    font-weight: 700;
+    text-align: center;
+    margin-top: -8px;
+  }
+
+  /* iPhone shell */
+  .phone {
+    width: 290px;
+    height: 628px;
+    background: #1a1a1a;
+    border-radius: 46px;
+    padding: 12px;
+    box-shadow:
+      0 0 0 1px #333,
+      0 30px 80px rgba(0,0,0,0.8),
+      inset 0 0 0 1px #2a2a2a;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .screen {
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    border-radius: 36px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Status bar */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 22px 6px;
+    flex-shrink: 0;
+  }
+  .status-time { font-size: 15px; font-weight: 600; color: #000; }
+  .status-icons { font-size: 11px; color: #000; display: flex; gap: 4px; align-items: center; }
+
+  /* Dynamic island */
+  .island {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90px;
+    height: 28px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 10;
+  }
+
+  /* Bottom nav */
+  .bottom-nav {
+    display: flex;
+    border-top: 1px solid #f0f0f0;
+    padding: 8px 0 12px;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+  }
+  .nav-icon { font-size: 20px; line-height: 1; }
+  .nav-label { font-size: 9px; color: #888; font-weight: 500; }
+  .nav-item.active .nav-label { color: #16a34a; }
+  .nav-item.active .nav-icon { filter: none; }
+
+  /* Scrollable content area */
+  .content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ================================
+     DESIGN 1: TWO CARDS
+  ================================ */
+  .d1 .screen { background: #f8f8f8; }
+
+  .d1-header {
+    background: #fff;
+    padding: 6px 20px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f0f0f0;
+    flex-shrink: 0;
+  }
+  .d1-header .logo { font-size: 20px; font-weight: 800; color: #16a34a; letter-spacing: -0.5px; }
+  .d1-header .date-nav { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #666; }
+  .d1-header .date-nav span { font-weight: 600; color: #111; font-size: 13px; }
+  .d1-header .avatar { width: 28px; height: 28px; background: #16a34a; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; }
+
+  .d1-content { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+  .kid-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .kid-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .kid-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #dbeafe, #bfdbfe); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .kid-avatar.charlotte { background: linear-gradient(135deg, #fce7f3, #fbcfe8); }
+  .kid-info { flex: 1; }
+  .kid-name { font-size: 15px; font-weight: 700; color: #111; }
+  .kid-sub { font-size: 11px; color: #888; }
+  .log-btn-sm { background: #16a34a; color: white; border: none; border-radius: 10px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+  .cal-bar-wrap { margin-bottom: 10px; }
+  .cal-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-bottom: 4px; }
+  .cal-bar-label span:last-child { font-weight: 600; color: #111; }
+  .cal-bar { height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+  .cal-bar-fill { height: 100%; background: linear-gradient(90deg, #16a34a, #22c55e); border-radius: 3px; }
+
+  .nutrient-dots { display: flex; gap: 6px; margin-bottom: 10px; }
+  .ndot { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #666; background: #f8f8f8; border-radius: 8px; padding: 4px 7px; }
+  .ndot .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .dot-green { background: #16a34a; }
+  .dot-yellow { background: #f59e0b; }
+  .dot-red { background: #ef4444; }
+
+  .meal-checks { display: flex; gap: 8px; }
+  .mcheck { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .mcheck-icon { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+  .mcheck-icon.done { background: #dcfce7; color: #16a34a; }
+  .mcheck-icon.empty { background: #f5f5f5; color: #ccc; }
+  .mcheck-label { font-size: 8px; color: #999; }
+
+  .fab {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 52px;
+    height: 52px;
+    background: #16a34a;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    color: white;
+    box-shadow: 0 4px 16px rgba(22,163,74,0.5);
+    z-index: 5;
+    line-height: 1;
+    font-weight: 300;
+  }
+
+  /* ================================
+     DESIGN 2: DAILY BRIEF
+  ================================ */
+  .d2 .screen { background: #f8faf8; }
+
+  .d2-header {
+    background: #fff;
+    padding: 6px 20px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    flex-shrink: 0;
+  }
+  .d2-header-row { display: flex; justify-content: space-between; align-items: center; }
+  .d2-logo { font-size: 20px; font-weight: 800; color: #16a34a; }
+  .d2-date { font-size: 11px; color: #888; font-weight: 500; }
+
+  .d2-content { padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+
+  .ai-headline {
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    border: 1px solid #bbf7d0;
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .ai-headline-eyebrow { font-size: 10px; color: #16a34a; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+  .ai-headline h2 { font-size: 14px; font-weight: 700; color: #111; line-height: 1.4; }
+  .ai-headline p { font-size: 12px; color: #555; margin-top: 4px; line-height: 1.4; }
+
+  .kids-compact { display: flex; flex-direction: column; gap: 8px; }
+  .kid-row {
+    background: #fff;
+    border-radius: 14px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .kid-row-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #dbeafe, #bfdbfe); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .kid-row-avatar.c { background: linear-gradient(135deg, #fce7f3, #fbcfe8); }
+  .kid-row-info { flex: 1; }
+  .kid-row-name { font-size: 13px; font-weight: 700; color: #111; }
+  .kid-row-bar { height: 4px; background: #f0f0f0; border-radius: 2px; margin-top: 4px; overflow: hidden; }
+  .kid-row-bar-fill { height: 100%; border-radius: 2px; }
+  .kid-row-kcal { font-size: 11px; color: #888; white-space: nowrap; }
+
+  .suggest-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 12px;
+    border-left: 3px solid #f59e0b;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .suggest-eyebrow { font-size: 9px; color: #f59e0b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .suggest-text { font-size: 12px; color: #111; font-weight: 600; line-height: 1.4; }
+  .suggest-sub { font-size: 11px; color: #888; margin-top: 2px; }
+
+  .log-meal-btn {
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    letter-spacing: -0.2px;
+  }
+
+  .recent-label { font-size: 12px; font-weight: 700; color: #111; }
+  .recent-meal { background: #fff; border-radius: 12px; padding: 10px 12px; margin-top: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .recent-meal-title { font-size: 12px; font-weight: 600; color: #111; }
+  .recent-meal-sub { font-size: 10px; color: #999; margin-top: 2px; }
+
+  /* ================================
+     DESIGN 3: FEED
+  ================================ */
+  .d3 .screen { background: #fff; }
+
+  .d3-header {
+    background: #fff;
+    padding: 6px 16px 8px;
+    border-bottom: 1px solid #f0f0f0;
+    flex-shrink: 0;
+  }
+  .d3-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .d3-logo { font-size: 20px; font-weight: 800; color: #16a34a; }
+  .d3-rings { display: flex; gap: 8px; align-items: center; }
+  .ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .ring {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: conic-gradient(#16a34a 0% 62%, #f0f0f0 62% 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .ring::after {
+    content: '';
+    width: 22px;
+    height: 22px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+  }
+  .ring.charlotte { background: conic-gradient(#ec4899 0% 35%, #f0f0f0 35% 100%); }
+  .ring-label { font-size: 8px; color: #888; font-weight: 600; }
+
+  .day-strip { display: flex; gap: 4px; }
+  .day-chip {
+    flex: 1;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 8px;
+    font-size: 10px;
+    color: #999;
+    font-weight: 500;
+  }
+  .day-chip.today { background: #16a34a; color: white; font-weight: 700; }
+
+  .d3-content { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  .feed-card {
+    border: 1px solid #f0f0f0;
+    border-radius: 14px;
+    padding: 11px 12px;
+  }
+  .feed-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .feed-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: #f0fdf4;
+    border-radius: 8px;
+    padding: 3px 8px;
+  }
+  .feed-chip.c { background: #fdf2f8; }
+  .feed-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
+  .feed-chip-dot.c { background: #ec4899; }
+  .feed-chip-name { font-size: 10px; font-weight: 700; color: #111; }
+  .feed-time { font-size: 10px; color: #bbb; margin-left: auto; }
+  .feed-title { font-size: 13px; font-weight: 700; color: #111; margin-bottom: 3px; }
+  .feed-sub { font-size: 11px; color: #888; }
+  .feed-nutrients { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .feed-nutrient { background: #f8f8f8; border-radius: 6px; padding: 3px 7px; font-size: 9px; color: #666; font-weight: 600; }
+
+  .d3-fab {
+    position: absolute;
+    bottom: 62px;
+    right: 16px;
+    width: 46px;
+    height: 46px;
+    background: #16a34a;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    box-shadow: 0 4px 16px rgba(22,163,74,0.5);
+    z-index: 5;
+  }
+
+  /* ================================
+     DESIGN 4: COMMAND
+  ================================ */
+  .d4 .screen { background: #0d0d0d; }
+  .d4 .status-bar { position: absolute; top: 0; left: 0; right: 0; z-index: 5; }
+  .d4 .status-time { color: #fff; }
+  .d4 .status-icons { color: #fff; }
+
+  .d4-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, #0f2810 0%, #0d1a0e 40%, #0a0a0a 100%);
+  }
+
+  .d4-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 52px 20px 20px;
+    z-index: 2;
+  }
+
+  .d4-kid-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .d4-kid-name { font-size: 24px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  .d4-kid-sub { font-size: 12px; color: rgba(255,255,255,0.4); }
+  .d4-swipe { font-size: 11px; color: rgba(255,255,255,0.3); display: flex; align-items: center; gap: 4px; }
+
+  .d4-big-cal {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin: 8px 0;
+  }
+  .d4-cal-num { font-size: 72px; font-weight: 800; color: #fff; letter-spacing: -4px; line-height: 1; }
+  .d4-cal-sub { font-size: 14px; color: rgba(255,255,255,0.3); font-weight: 500; letter-spacing: 1px; }
+  .d4-arc {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .d4-arc-fill {
+    height: 100%;
+    background: #16a34a;
+    border-radius: 2px;
+    width: 60%;
+    box-shadow: 0 0 10px #16a34a;
+  }
+
+  .meal-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .meal-slot {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+    position: relative;
+  }
+  .meal-slot.done { border-color: rgba(22,163,74,0.3); background: rgba(22,163,74,0.08); }
+  .meal-slot-icon { font-size: 18px; }
+  .meal-slot-label { font-size: 11px; color: rgba(255,255,255,0.4); font-weight: 600; letter-spacing: 0.3px; }
+  .meal-slot-status { font-size: 11px; font-weight: 700; }
+  .meal-slot.done .meal-slot-status { color: #4ade80; }
+  .meal-slot:not(.done) .meal-slot-status { color: rgba(255,255,255,0.2); }
+  .meal-slot-check { position: absolute; top: 10px; right: 10px; font-size: 13px; }
+
+  .d4-nav { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+  .d4-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.2); }
+  .d4-dot.active { background: #16a34a; width: 18px; border-radius: 3px; }
+
+  /* ================================
+     DESIGN 5: NOURI TALKS
+  ================================ */
+  .d5 .screen { background: #fff; }
+
+  .d5-header {
+    background: #fff;
+    padding: 6px 16px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    flex-shrink: 0;
+  }
+  .d5-header-inner { display: flex; align-items: center; gap: 10px; }
+  .nouri-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: white; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .nouri-name { font-size: 16px; font-weight: 700; color: #111; }
+  .nouri-sub { font-size: 11px; color: #888; }
+  .d5-online { margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: 11px; color: #16a34a; font-weight: 600; }
+  .online-dot { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; }
+
+  .d5-content { flex: 1; overflow: hidden; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+
+  .chat-msg {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  .chat-msg.nouri { flex-direction: row; }
+  .chat-msg.user { flex-direction: row-reverse; }
+
+  .chat-nouri-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: white; font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .chat-bubble {
+    max-width: 80%;
+    border-radius: 18px;
+    padding: 10px 13px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #111;
+  }
+  .chat-msg.nouri .chat-bubble {
+    background: #f5f5f5;
+    border-bottom-left-radius: 5px;
+  }
+  .chat-msg.user .chat-bubble {
+    background: #16a34a;
+    color: white;
+    border-bottom-right-radius: 5px;
+  }
+
+  .chat-actions { display: flex; gap: 6px; flex-wrap: wrap; padding-left: 34px; }
+  .chat-action-btn {
+    background: #fff;
+    border: 1.5px solid #16a34a;
+    color: #16a34a;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .d5-input {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px 4px;
+    border-top: 1px solid #f0f0f0;
+    align-items: center;
+    flex-shrink: 0;
+    background: #fff;
+  }
+  .d5-input-box {
+    flex: 1;
+    background: #f5f5f5;
+    border-radius: 20px;
+    padding: 9px 14px;
+    font-size: 13px;
+    color: #bbb;
+    border: none;
+  }
+  .d5-send {
+    width: 34px; height: 34px;
+    background: #16a34a;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .chat-time { font-size: 10px; color: #bbb; text-align: center; margin: 2px 0; }
+</style>
+</head>
+<body>
+
+<h1>Nouri — UX Concepts</h1>
+<p class="subtitle">5 directions for the iPhone experience · March 2026</p>
+
+<div class="concepts">
+
+  <!-- ========== DESIGN 1: TWO CARDS ========== -->
+  <div class="concept">
+    <div class="concept-label">Design 1</div>
+    <div class="concept-title">Two Cards</div>
+    <div class="phone d1">
+      <div class="island"></div>
+      <div class="screen">
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <span class="status-icons">●●● 5G 🔋</span>
+        </div>
+        <div class="d1-header">
+          <span class="logo">nouri</span>
+          <div class="date-nav">‹ <span>Monday, Mar 2</span> ›</div>
+          <div class="avatar">C</div>
+        </div>
+        <div class="content">
+          <div class="d1-content">
+
+            <!-- Mason card -->
+            <div class="kid-card">
+              <div class="kid-card-header">
+                <div class="kid-avatar">🏒</div>
+                <div class="kid-info">
+                  <div class="kid-name">Mason</div>
+                  <div class="kid-sub">12 yrs · Hockey today</div>
+                </div>
+                <button class="log-btn-sm">+ Meal</button>
+              </div>
+              <div class="cal-bar-wrap">
+                <div class="cal-bar-label"><span>Calories</span><span>1,450 / 2,400 kcal</span></div>
+                <div class="cal-bar"><div class="cal-bar-fill" style="width:60%"></div></div>
+              </div>
+              <div class="nutrient-dots">
+                <div class="ndot"><span class="dot dot-green"></span>Protein 103%</div>
+                <div class="ndot"><span class="dot dot-yellow"></span>Calcium 51%</div>
+                <div class="ndot"><span class="dot dot-red"></span>Vit D 27%</div>
+              </div>
+              <div class="meal-checks">
+                <div class="mcheck"><div class="mcheck-icon done">✓</div><div class="mcheck-label">Breakfast</div></div>
+                <div class="mcheck"><div class="mcheck-icon done">✓</div><div class="mcheck-label">Lunch</div></div>
+                <div class="mcheck"><div class="mcheck-icon empty">·</div><div class="mcheck-label">Snack</div></div>
+                <div class="mcheck"><div class="mcheck-icon empty">·</div><div class="mcheck-label">Dinner</div></div>
+              </div>
+            </div>
+
+            <!-- Charlotte card -->
+            <div class="kid-card">
+              <div class="kid-card-header">
+                <div class="kid-avatar charlotte">🤸</div>
+                <div class="kid-info">
+                  <div class="kid-name">Charlotte</div>
+                  <div class="kid-sub">8 yrs · Gymnastics today</div>
+                </div>
+                <button class="log-btn-sm">+ Meal</button>
+              </div>
+              <div class="cal-bar-wrap">
+                <div class="cal-bar-label"><span>Calories</span><span>620 / 1,800 kcal</span></div>
+                <div class="cal-bar"><div class="cal-bar-fill" style="width:34%; background: linear-gradient(90deg,#f59e0b,#fbbf24)"></div></div>
+              </div>
+              <div class="nutrient-dots">
+                <div class="ndot"><span class="dot dot-yellow"></span>Protein 44%</div>
+                <div class="ndot"><span class="dot dot-red"></span>Calcium 33%</div>
+                <div class="ndot"><span class="dot dot-red"></span>Vit D 18%</div>
+              </div>
+              <div class="meal-checks">
+                <div class="mcheck"><div class="mcheck-icon done">✓</div><div class="mcheck-label">Breakfast</div></div>
+                <div class="mcheck"><div class="mcheck-icon empty">·</div><div class="mcheck-label">Lunch</div></div>
+                <div class="mcheck"><div class="mcheck-icon empty">·</div><div class="mcheck-label">Snack</div></div>
+                <div class="mcheck"><div class="mcheck-icon empty">·</div><div class="mcheck-label">Dinner</div></div>
+              </div>
+            </div>
+
+          </div>
+          <div class="fab">+</div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item active"><div class="nav-icon">🏠</div><div class="nav-label">Home</div></div>
+          <div class="nav-item"><div class="nav-icon">💬</div><div class="nav-label">Chat</div></div>
+          <div class="nav-item"><div class="nav-icon">📖</div><div class="nav-label">History</div></div>
+          <div class="nav-item"><div class="nav-icon">⚙️</div><div class="nav-label">Settings</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DESIGN 2: DAILY BRIEF ========== -->
+  <div class="concept">
+    <div class="concept-label">Design 2</div>
+    <div class="concept-title">Daily Brief</div>
+    <div class="phone d2">
+      <div class="island"></div>
+      <div class="screen">
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <span class="status-icons">●●● 5G 🔋</span>
+        </div>
+        <div class="d2-header">
+          <div class="d2-header-row">
+            <span class="d2-logo">nouri</span>
+            <span class="d2-date">Monday, March 2</span>
+          </div>
+        </div>
+        <div class="content">
+          <div class="d2-content">
+
+            <div class="ai-headline">
+              <div class="ai-headline-eyebrow">✨ Nouri's take</div>
+              <h2>Mason's on track. Charlotte needs 400 more calories by dinner.</h2>
+              <p>Add a glass of milk and a snack — she has gymnastics today.</p>
+            </div>
+
+            <div class="kids-compact">
+              <div class="kid-row">
+                <div class="kid-row-avatar">🏒</div>
+                <div class="kid-row-info">
+                  <div class="kid-row-name">Mason · 1,450 / 2,400 kcal</div>
+                  <div class="kid-row-bar"><div class="kid-row-bar-fill" style="width:60%; background:#16a34a;"></div></div>
+                </div>
+                <div class="kid-row-kcal" style="color:#16a34a; font-weight:700;">60%</div>
+              </div>
+              <div class="kid-row">
+                <div class="kid-row-avatar c">🤸</div>
+                <div class="kid-row-info">
+                  <div class="kid-row-name">Charlotte · 620 / 1,800 kcal</div>
+                  <div class="kid-row-bar"><div class="kid-row-bar-fill" style="width:34%; background:#f59e0b;"></div></div>
+                </div>
+                <div class="kid-row-kcal" style="color:#f59e0b; font-weight:700;">34%</div>
+              </div>
+            </div>
+
+            <div class="suggest-card">
+              <div class="suggest-eyebrow">💡 Suggested next</div>
+              <div class="suggest-text">Charlotte — Yogurt with granola & berries</div>
+              <div class="suggest-sub">Hits calcium + protein gap · 340 kcal</div>
+            </div>
+
+            <div class="log-meal-btn">+ Log a Meal</div>
+
+            <div>
+              <div class="recent-label">Today's meals</div>
+              <div class="recent-meal">
+                <div class="recent-meal-title">🏒 Mason · Scrambled Eggs & Toast</div>
+                <div class="recent-meal-sub">Breakfast · 8:12 AM · 520 kcal</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item active"><div class="nav-icon">🏠</div><div class="nav-label">Home</div></div>
+          <div class="nav-item"><div class="nav-icon">💬</div><div class="nav-label">Chat</div></div>
+          <div class="nav-item"><div class="nav-icon">📖</div><div class="nav-label">History</div></div>
+          <div class="nav-item"><div class="nav-icon">⚙️</div><div class="nav-label">Settings</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DESIGN 3: FEED ========== -->
+  <div class="concept">
+    <div class="concept-label">Design 3</div>
+    <div class="concept-title">Feed</div>
+    <div class="phone d3">
+      <div class="island"></div>
+      <div class="screen">
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <span class="status-icons">●●● 5G 🔋</span>
+        </div>
+        <div class="d3-header">
+          <div class="d3-top">
+            <span class="d3-logo">nouri</span>
+            <div class="d3-rings">
+              <div class="ring-wrap">
+                <div class="ring"></div>
+                <div class="ring-label">Mason</div>
+              </div>
+              <div class="ring-wrap">
+                <div class="ring charlotte"></div>
+                <div class="ring-label">Charlotte</div>
+              </div>
+            </div>
+          </div>
+          <div class="day-strip">
+            <div class="day-chip">Fri</div>
+            <div class="day-chip">Sat</div>
+            <div class="day-chip">Sun</div>
+            <div class="day-chip today">Mon</div>
+            <div class="day-chip">Tue</div>
+            <div class="day-chip">Wed</div>
+            <div class="day-chip">Thu</div>
+          </div>
+        </div>
+        <div class="content">
+          <div class="d3-content">
+
+            <div class="feed-card">
+              <div class="feed-card-top">
+                <div class="feed-chip"><div class="feed-chip-dot"></div><div class="feed-chip-name">Mason</div></div>
+                <div class="feed-time">8:12 AM</div>
+              </div>
+              <div class="feed-title">Scrambled Eggs & Buttered Toast</div>
+              <div class="feed-sub">Breakfast · 520 kcal · High confidence</div>
+              <div class="feed-nutrients">
+                <div class="feed-nutrient">Protein 38g</div>
+                <div class="feed-nutrient">Calcium 180mg</div>
+                <div class="feed-nutrient">Carbs 42g</div>
+              </div>
+            </div>
+
+            <div class="feed-card">
+              <div class="feed-card-top">
+                <div class="feed-chip c"><div class="feed-chip-dot c"></div><div class="feed-chip-name">Charlotte</div></div>
+                <div class="feed-time">8:30 AM</div>
+              </div>
+              <div class="feed-title">Greek Yogurt Parfait</div>
+              <div class="feed-sub">Breakfast · 310 kcal · High confidence</div>
+              <div class="feed-nutrients">
+                <div class="feed-nutrient">Protein 18g</div>
+                <div class="feed-nutrient">Calcium 290mg</div>
+              </div>
+            </div>
+
+            <div class="feed-card">
+              <div class="feed-card-top">
+                <div class="feed-chip"><div class="feed-chip-dot"></div><div class="feed-chip-name">Mason</div></div>
+                <div class="feed-time">12:45 PM</div>
+              </div>
+              <div class="feed-title">Turkey & Cheese Sandwich</div>
+              <div class="feed-sub">Lunch · 680 kcal · Medium confidence</div>
+              <div class="feed-nutrients">
+                <div class="feed-nutrient">Protein 42g</div>
+                <div class="feed-nutrient">Iron 3mg</div>
+              </div>
+            </div>
+
+          </div>
+          <div class="d3-fab">+</div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item active"><div class="nav-icon">📋</div><div class="nav-label">Feed</div></div>
+          <div class="nav-item"><div class="nav-icon">📊</div><div class="nav-label">Analytics</div></div>
+          <div class="nav-item"><div class="nav-icon">💬</div><div class="nav-label">Chat</div></div>
+          <div class="nav-item"><div class="nav-icon">⚙️</div><div class="nav-label">Settings</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DESIGN 4: COMMAND ========== -->
+  <div class="concept">
+    <div class="concept-label">Design 4</div>
+    <div class="concept-title">Command</div>
+    <div class="phone d4">
+      <div class="island"></div>
+      <div class="screen">
+        <div class="d4-bg"></div>
+        <div class="status-bar" style="position:absolute;top:0;left:0;right:0;z-index:5;padding:14px 22px 6px;">
+          <span class="status-time" style="color:#fff;">9:41</span>
+          <span class="status-icons" style="color:#fff;">●●● 5G 🔋</span>
+        </div>
+        <div class="d4-content">
+          <div class="d4-kid-header">
+            <div>
+              <div class="d4-kid-name">Mason</div>
+              <div class="d4-kid-sub">12 yrs · Hockey today</div>
+            </div>
+            <div class="d4-swipe">Charlotte →</div>
+          </div>
+          <div class="d4-big-cal">
+            <div style="font-size:13px;color:rgba(255,255,255,0.35);letter-spacing:1px;font-weight:500;">CALORIES TODAY</div>
+            <div class="d4-cal-num">1,450</div>
+            <div class="d4-cal-sub">OF 2,400 KCAL</div>
+            <div class="d4-arc"><div class="d4-arc-fill"></div></div>
+          </div>
+          <div class="meal-slots">
+            <div class="meal-slot done">
+              <div class="meal-slot-icon">🌅</div>
+              <div class="meal-slot-label">BREAKFAST</div>
+              <div class="meal-slot-status">520 kcal</div>
+              <div class="meal-slot-check">✓</div>
+            </div>
+            <div class="meal-slot done">
+              <div class="meal-slot-icon">☀️</div>
+              <div class="meal-slot-label">LUNCH</div>
+              <div class="meal-slot-status">680 kcal</div>
+              <div class="meal-slot-check">✓</div>
+            </div>
+            <div class="meal-slot">
+              <div class="meal-slot-icon">🌤</div>
+              <div class="meal-slot-label">SNACK</div>
+              <div class="meal-slot-status">Tap to log</div>
+            </div>
+            <div class="meal-slot">
+              <div class="meal-slot-icon">🌙</div>
+              <div class="meal-slot-label">DINNER</div>
+              <div class="meal-slot-status">Tap to log</div>
+            </div>
+          </div>
+          <div class="d4-nav">
+            <div class="d4-dot active"></div>
+            <div class="d4-dot"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DESIGN 5: NOURI TALKS ========== -->
+  <div class="concept">
+    <div class="concept-label">Design 5</div>
+    <div class="concept-title">Nouri Talks</div>
+    <div class="phone d5">
+      <div class="island"></div>
+      <div class="screen">
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <span class="status-icons">●●● 5G 🔋</span>
+        </div>
+        <div class="d5-header">
+          <div class="d5-header-inner">
+            <div class="nouri-avatar">N</div>
+            <div>
+              <div class="nouri-name">Nouri</div>
+              <div class="nouri-sub">Your family nutritionist</div>
+            </div>
+            <div class="d5-online"><div class="online-dot"></div>Active</div>
+          </div>
+        </div>
+
+        <div class="d5-content">
+          <div class="chat-time">Monday, March 2 · 9:41 AM</div>
+
+          <div class="chat-msg nouri">
+            <div class="chat-nouri-avatar">N</div>
+            <div class="chat-bubble">Good morning! 🌅 Charlotte has gymnastics today — she should aim for 1,900 kcal. Want to log her breakfast?</div>
+          </div>
+          <div class="chat-actions">
+            <div class="chat-action-btn">📝 Log breakfast</div>
+            <div class="chat-action-btn">📋 See today's plan</div>
+          </div>
+
+          <div class="chat-msg user">
+            <div class="chat-bubble">Mason just had lunch</div>
+          </div>
+
+          <div class="chat-msg nouri">
+            <div class="chat-nouri-avatar">N</div>
+            <div class="chat-bubble">Got it! What did he eat? Just type it naturally — I'll handle the rest 🏒</div>
+          </div>
+
+          <div class="chat-msg nouri">
+            <div class="chat-nouri-avatar">N</div>
+            <div class="chat-bubble">Mason just hit his protein goal for the day! 🎉 He still needs calcium — a glass of milk at dinner would do it.</div>
+          </div>
+          <div class="chat-actions">
+            <div class="chat-action-btn">📊 View full stats</div>
+          </div>
+        </div>
+
+        <div class="d5-input">
+          <div class="d5-input-box">Message Nouri…</div>
+          <div class="d5-send">↑</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

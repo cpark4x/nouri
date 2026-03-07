@@ -1,0 +1,255 @@
+# =============================================================================
+# NOURI DEV MACHINE — HEALTH GATE VERIFICATION
+# =============================================================================
+#
+# Runs the three quality gates (test, build, lint) against the Nouri project,
+# generates a PASS/FAIL health report, and writes the results into the
+# health_gates section of STATE.yaml.
+#
+# Gates:
+#   1. npm test       → Vitest unit/integration tests
+#   2. npm run build  → Next.js production build (full TypeScript type check)
+#   3. npm run lint   → ESLint (eslint.config.mjs)
+#
+# Required agents:
+#   - foundation:zen-architect  (generates the human-readable health report)
+#   - foundation:file-ops       (writes gate results back into STATE.yaml)
+#
+# This recipe is intentionally linear (no loops). Run it:
+#   • After a build.yaml run to confirm everything is clean
+#   • Before starting a new development session
+#   • After any manual changes outside the build loop
+#
+# Usage:
+#   amplifier recipes execute .dev-machine/recipes/verify.yaml
+#
+# Exit codes stored as strings: "0" = PASS, non-"0" = FAIL.
+# All three bash steps use on_error: "continue" so the pipeline always
+# completes and the health report sees all three results.
+# =============================================================================
+
+name: "nouri-dev-machine-verify"
+description: >
+  Health gate verification for the Nouri project. Runs npm test, npm run build,
+  and npm run lint; generates a structured PASS/FAIL report; and updates the
+  health_gates section of STATE.yaml with current status.
+version: "1.0.0"
+author: "Nouri Dev Machine"
+created: "2026-03-06T00:00:00Z"
+tags: ["dev-machine", "nouri", "health-check", "ci", "verify"]
+
+# ---------------------------------------------------------------------------
+# Pre-declare exit code variables so the static validator resolves them.
+# The bash steps below overwrite these via output_exit_code at runtime.
+# ---------------------------------------------------------------------------
+context:
+  test_exit_code: ""
+  build_exit_code: ""
+  lint_exit_code: ""
+
+steps:
+
+  # ===========================================================================
+  # STEP 1: RUN TESTS
+  # Vitest: runs the full test suite.
+  # Captures stdout+stderr. Stores exit code in test_exit_code.
+  # on_error: continue — let the pipeline finish even if tests fail.
+  # ===========================================================================
+  - id: "run-tests"
+    type: "bash"
+    command: "npm test 2>&1"
+    cwd: "/Users/chrispark/Projects/nouri"
+    output: "test_output"
+    output_exit_code: "test_exit_code"
+    on_error: "continue"
+    timeout: 300   # 5 min — Vitest with coverage can be slow
+
+  # ===========================================================================
+  # STEP 2: RUN BUILD
+  # Next.js production build — validates the full TypeScript type graph and
+  # ensures no import or compilation errors exist.
+  # Captures stdout+stderr. Stores exit code in build_exit_code.
+  # on_error: continue — let the pipeline finish even if build fails.
+  # ===========================================================================
+  - id: "run-build"
+    type: "bash"
+    command: "npm run build 2>&1"
+    cwd: "/Users/chrispark/Projects/nouri"
+    output: "build_output"
+    output_exit_code: "build_exit_code"
+    on_error: "continue"
+    timeout: 600   # 10 min — Next.js builds can take a while on first run
+
+  # ===========================================================================
+  # STEP 3: RUN LINT
+  # ESLint using the project's eslint.config.mjs. Errors fail the gate;
+  # warnings are acceptable and do not affect gate status.
+  # Captures stdout+stderr. Stores exit code in lint_exit_code.
+  # on_error: continue — let the pipeline finish even if lint fails.
+  # ===========================================================================
+  - id: "run-lint"
+    type: "bash"
+    command: "npm run lint 2>&1"
+    cwd: "/Users/chrispark/Projects/nouri"
+    output: "lint_output"
+    output_exit_code: "lint_exit_code"
+    on_error: "continue"
+    timeout: 120   # 2 min — lint is fast
+
+  # ===========================================================================
+  # STEP 4: GENERATE HEALTH GATE REPORT
+  # Analyzes all three gate results and produces a structured Markdown report
+  # showing PASS/FAIL status, relevant output excerpts, and fix guidance.
+  # ===========================================================================
+  - id: "generate-health-report"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    timeout: 180
+    prompt: |
+      You are the quality gate inspector for the Nouri project. Analyze the
+      results of three automated checks and produce a structured health report.
+
+      ════════════════════════════════════════════════════════════════════════
+      GATE RESULTS (exit code 0 = PASS, non-zero = FAIL)
+      ════════════════════════════════════════════════════════════════════════
+      npm test exit code:        {{test_exit_code}}
+      npm run build exit code:   {{build_exit_code}}
+      npm run lint exit code:    {{lint_exit_code}}
+
+      ════════════════════════════════════════════════════════════════════════
+      TEST OUTPUT
+      ════════════════════════════════════════════════════════════════════════
+      {{test_output}}
+
+      ════════════════════════════════════════════════════════════════════════
+      BUILD OUTPUT
+      ════════════════════════════════════════════════════════════════════════
+      {{build_output}}
+
+      ════════════════════════════════════════════════════════════════════════
+      LINT OUTPUT
+      ════════════════════════════════════════════════════════════════════════
+      {{lint_output}}
+
+      ════════════════════════════════════════════════════════════════════════
+      PRODUCE THE FOLLOWING REPORT (fill in every placeholder)
+      ════════════════════════════════════════════════════════════════════════
+
+      ## Nouri Health Gate Report
+
+      **Date:** <today's date and time>
+      **Project:** /Users/chrispark/Projects/nouri
+
+      ### Gate Status
+
+      | Gate | Command | Exit Code | Status |
+      |------|---------|-----------|--------|
+      | Tests | `npm test` | {{test_exit_code}} | <✅ PASS if 0, ❌ FAIL otherwise> |
+      | Build | `npm run build` | {{build_exit_code}} | <✅ PASS if 0, ❌ FAIL otherwise> |
+      | Lint | `npm run lint` | {{lint_exit_code}} | <✅ PASS if 0, ❌ FAIL otherwise> |
+
+      ### Overall Status: <🟢 HEALTHY if all three are 0, 🔴 UNHEALTHY otherwise>
+
+      ### Test Summary
+      <If PASS: number of tests run and passing. If FAIL: list the specific
+      test names and failure messages from the test output above.>
+
+      ### Build Summary
+      <If PASS: "Clean build — no TypeScript or Next.js errors." If FAIL:
+      extract and list the specific error messages from the build output.>
+
+      ### Lint Summary
+      <If PASS: "No lint errors." Note any warnings. If FAIL: list the
+      specific files, line numbers, and rule names from the lint output.>
+
+      ### Issues Found
+
+      <If all gates PASS, write "No issues — project is healthy.">
+
+      <If any gate FAILS, list each issue in this format:>
+
+      **[Gate Name] — [Severity: BLOCKING]**
+      - File: `<file path and line number if available>`
+      - Error: `<exact error message>`
+      - Fix: <one-sentence actionable recommendation>
+
+      ### Recommended Actions
+
+      <If all gates PASS: "No action needed. Ready to build or deploy.">
+
+      <If any gate FAILS, provide a prioritized fix list:>
+      1. <Most critical fix — what to do and where>
+      2. <Next fix>
+      (etc.)
+
+      ---
+      *Generated by nouri-dev-machine-verify v1.0.0*
+    output: "health_report"
+
+  # ===========================================================================
+  # STEP 5: UPDATE STATE.yaml HEALTH GATES
+  # Writes gate results and overall status into the health_gates section of
+  # STATE.yaml. Creates the section if it doesn't exist; overwrites if it does.
+  # ===========================================================================
+  - id: "update-health-gates"
+    agent: "foundation:file-ops"
+    timeout: 180
+    prompt: |
+      Update the health_gates section of the Nouri project's STATE.yaml file.
+
+      ════════════════════════════════════════════════════════════════════════
+      FILE TO UPDATE
+      ════════════════════════════════════════════════════════════════════════
+      /Users/chrispark/Projects/nouri/.dev-machine/STATE.yaml
+
+      ════════════════════════════════════════════════════════════════════════
+      GATE RESULTS TO WRITE
+      ════════════════════════════════════════════════════════════════════════
+      test exit code:   {{test_exit_code}}   (string "0" = PASS, else FAIL)
+      build exit code:  {{build_exit_code}}  (string "0" = PASS, else FAIL)
+      lint exit code:   {{lint_exit_code}}   (string "0" = PASS, else FAIL)
+
+      Overall status: PASS only if ALL THREE exit codes are "0", else FAIL.
+
+      ════════════════════════════════════════════════════════════════════════
+      INSTRUCTIONS
+      ════════════════════════════════════════════════════════════════════════
+      1. Read the complete content of STATE.yaml.
+
+      2. Find or create a top-level key called `health_gates`.
+
+      3. Replace the entire health_gates block with the following structure
+         (substitute real values for all <placeholders>):
+
+         health_gates:
+           last_checked: "<current ISO 8601 timestamp, e.g. 2026-03-06T15:55:00Z>"
+           overall: "<PASS if all exit codes are 0, FAIL otherwise>"
+           gates:
+             tests:
+               status: "<PASS if test_exit_code == '0', else FAIL>"
+               exit_code: <test_exit_code as integer, e.g. 0 or 1>
+               command: "npm test"
+             build:
+               status: "<PASS if build_exit_code == '0', else FAIL>"
+               exit_code: <build_exit_code as integer>
+               command: "npm run build"
+             lint:
+               status: "<PASS if lint_exit_code == '0', else FAIL>"
+               exit_code: <lint_exit_code as integer>
+               command: "npm run lint"
+
+      4. If health_gates already exists anywhere in STATE.yaml, remove it and
+         replace with the block above. Do not leave duplicate keys.
+
+      5. Write the fully updated STATE.yaml back to disk.
+
+      6. Confirm success by outputting the health_gates block you wrote,
+         exactly as it appears in the file.
+
+      ════════════════════════════════════════════════════════════════════════
+      IMPORTANT
+      ════════════════════════════════════════════════════════════════════════
+      • Preserve all other content in STATE.yaml exactly as-is.
+      • Do not reformat or reorder any other sections.
+      • Ensure the YAML is valid after writing (proper indentation, no tabs).
+    output: "health_gates_update"
