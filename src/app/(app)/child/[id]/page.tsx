@@ -14,6 +14,13 @@ import {
   deriveActivityLevel,
 } from "@/lib/targets/calculate";
 import type { ChildProfile } from "@/lib/targets/calculate";
+import {
+  subDays,
+  addDays,
+  isSameDay,
+  toDateParam,
+  formatDateLabel,
+} from "@/app/api/dashboard/logic";
 
 interface ChildDetail {
   id: string;
@@ -129,6 +136,9 @@ export default function ChildDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Date navigation — starts at today, allows browsing to any past day
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+
   // Tab state
   const [activeTab, setActiveTab] = useState<"today" | "thisWeek">("today");
   const todayTabRef = useRef<HTMLButtonElement>(null);
@@ -146,11 +156,17 @@ export default function ChildDetailPage() {
   // Collapsible "How targets are set" section
   const [showTargetSources, setShowTargetSources] = useState(false);
 
-  // Fetch today's data
+  // Fetch the selected day's data; re-runs when id or selectedDate changes
   useEffect(() => {
     async function fetchChild() {
+      setLoading(true);
+      setError(null);
       try {
-        const res = await fetch(`/api/child/${id}`);
+        const isToday = isSameDay(selectedDate, new Date());
+        const url = isToday
+          ? `/api/child/${id}`
+          : `/api/child/${id}?date=${toDateParam(selectedDate)}`;
+        const res = await fetch(url);
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           setError(data.error ?? "Failed to load child data");
@@ -165,7 +181,7 @@ export default function ChildDetailPage() {
       }
     }
     fetchChild();
-  }, [id]);
+  }, [id, selectedDate]);
 
   // Lazy-fetch weekly data when the "This Week" tab is first activated
   useEffect(() => {
@@ -228,6 +244,12 @@ export default function ChildDetailPage() {
     Array.isArray(child.activityProfile.sports)
       ? child.activityProfile.sports
       : [];
+
+  const isViewingToday = isSameDay(selectedDate, new Date());
+  const dateLabel = formatDateLabel(selectedDate);
+  const mealsHeading = isViewingToday
+    ? "Today's Meals"
+    : `Meals — ${dateLabel}`;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
@@ -337,6 +359,30 @@ export default function ChildDetailPage() {
       {/* Today Tab */}
       {activeTab === "today" && (
         <div role="tabpanel" id="panel-today" aria-labelledby="tab-today">
+          {/* Date navigator — same < [Label] > pattern as B4 dashboard */}
+          <div className="mb-4 flex items-center justify-center gap-4">
+            <button
+              type="button"
+              aria-label="Previous day"
+              onClick={() => setSelectedDate((d) => subDays(d, 1))}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            >
+              &#8249;
+            </button>
+            <span className="min-w-[6rem] text-center text-sm font-medium text-gray-700">
+              {dateLabel}
+            </span>
+            <button
+              type="button"
+              aria-label="Next day"
+              disabled={isViewingToday}
+              onClick={() => setSelectedDate((d) => addDays(d, 1))}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              &#8250;
+            </button>
+          </div>
+
           {/* Nutrition Section */}
           <section className="mb-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <NutrientDetail
@@ -398,7 +444,7 @@ export default function ChildDetailPage() {
           {/* Meals Section */}
           <section>
             <h3 className="mb-3 text-sm font-semibold text-gray-900">
-              Today&apos;s Meals
+              {mealsHeading}
             </h3>
             <MealList meals={child.todayMeals} />
           </section>

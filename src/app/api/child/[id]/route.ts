@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { parseDateParam, buildDateWindow } from "./logic";
 
 function calculateAge(dateOfBirth: Date): number {
   const today = new Date();
@@ -16,20 +17,8 @@ function calculateAge(dateOfBirth: Date): number {
   return age;
 }
 
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function endOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
-
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
@@ -46,9 +35,10 @@ export async function GET(
 
   const { id } = await params;
 
-  const now = new Date();
-  const todayStart = startOfDay(now);
-  const todayEnd = endOfDay(now);
+  // Support ?date=YYYY-MM-DD for browsing past days; defaults to today.
+  const dateParam = new URL(request.url).searchParams.get("date");
+  const targetDate = parseDateParam(dateParam);
+  const { start, end } = buildDateWindow(targetDate);
 
   let child;
   try {
@@ -58,10 +48,10 @@ export async function GET(
         dailyTargets: true,
         mealLogs: {
           where: {
-            date: { gte: todayStart, lte: todayEnd },
+            date: { gte: start, lt: end },
           },
           include: { nutrients: true },
-          orderBy: { createdAt: "desc" },
+          orderBy: { date: "asc" },
         },
       },
     });
@@ -79,7 +69,7 @@ export async function GET(
     targets[dt.nutrient] = { target: dt.target, unit: dt.unit };
   }
 
-  // Aggregate today's intake
+  // Aggregate selected day's intake
   const todayIntake: Record<string, { amount: number; unit: string }> = {};
   for (const meal of child.mealLogs) {
     for (const entry of meal.nutrients) {
