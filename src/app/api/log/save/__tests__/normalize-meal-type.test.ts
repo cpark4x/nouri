@@ -1,50 +1,43 @@
 /**
  * TDD tests for mealType normalization logic
- * Run with: npx tsx "src/app/api/log/save/__tests__/normalize-meal-type.test.ts"
- *
- * RED:  fails because normalize-meal-type.ts does not exist yet
- * GREEN: passes once normalize-meal-type.ts is implemented
  */
+import { describe, it } from "vitest";
 import assert from "node:assert/strict";
 import { normalizeMealType, ALLOWED_MEAL_TYPES } from "../normalize-meal-type";
 
-// ── ALLOWED_MEAL_TYPES order ──────────────────────────────────────────────────
+describe("ALLOWED_MEAL_TYPES", () => {
+  it("is in correct breakfast → lunch → snack → dinner order", () => {
+    assert.deepEqual(ALLOWED_MEAL_TYPES, ["breakfast", "lunch", "snack", "dinner"]);
+  });
+});
 
-assert.deepEqual(
-  ALLOWED_MEAL_TYPES,
-  ["breakfast", "lunch", "snack", "dinner"],
-  "ALLOWED_MEAL_TYPES must be in breakfast → lunch → snack → dinner order",
-);
-console.log("✓ ALLOWED_MEAL_TYPES order is correct");
+describe("normalizeMealType", () => {
+  it("accepts all lowercase valid meal types", () => {
+    assert.equal(normalizeMealType("breakfast"), "breakfast");
+    assert.equal(normalizeMealType("lunch"), "lunch");
+    assert.equal(normalizeMealType("snack"), "snack");
+    assert.equal(normalizeMealType("dinner"), "dinner");
+  });
 
-// ── Valid lowercase values ────────────────────────────────────────────────────
+  it("normalizes capitalized values to lowercase", () => {
+    assert.equal(normalizeMealType("Breakfast"), "breakfast");
+    assert.equal(normalizeMealType("Lunch"), "lunch");
+    assert.equal(normalizeMealType("Snack"), "snack");
+    assert.equal(normalizeMealType("Dinner"), "dinner");
+  });
 
-assert.equal(normalizeMealType("breakfast"), "breakfast", "lowercase breakfast accepted");
-assert.equal(normalizeMealType("lunch"), "lunch", "lowercase lunch accepted");
-assert.equal(normalizeMealType("snack"), "snack", "lowercase snack accepted");
-assert.equal(normalizeMealType("dinner"), "dinner", "lowercase dinner accepted");
-console.log("✓ All lowercase meal types accepted");
+  it("trims whitespace", () => {
+    assert.equal(normalizeMealType("  lunch  "), "lunch");
+    assert.equal(normalizeMealType("\tbreakfast\n"), "breakfast");
+  });
 
-// ── Capitalized values are normalized ────────────────────────────────────────
+  it("returns null for invalid meal types", () => {
+    assert.equal(normalizeMealType("brunch"), null);
+    assert.equal(normalizeMealType(""), null);
+    assert.equal(normalizeMealType("meal"), null);
+  });
 
-assert.equal(normalizeMealType("Breakfast"), "breakfast", "Breakfast → breakfast");
-assert.equal(normalizeMealType("Lunch"), "lunch", "Lunch → lunch");
-assert.equal(normalizeMealType("Snack"), "snack", "Snack → snack");
-assert.equal(normalizeMealType("Dinner"), "dinner", "Dinner → dinner");
-console.log("✓ Capitalized values are normalized to lowercase");
-
-// ── Whitespace is trimmed ─────────────────────────────────────────────────────
-
-assert.equal(normalizeMealType("  lunch  "), "lunch", "whitespace trimmed");
-assert.equal(normalizeMealType("\tbreakfast\n"), "breakfast", "tabs/newlines trimmed");
-console.log("✓ Whitespace is trimmed");
-
-// ── Invalid values return null ────────────────────────────────────────────────
-
-assert.equal(normalizeMealType("brunch"), null, "brunch is not a valid meal type");
-assert.equal(normalizeMealType(""), null, "empty string is invalid");
-assert.equal(normalizeMealType("meal"), null, "arbitrary string is invalid");
-assert.equal(normalizeMealType("DINNER"), "dinner", "DINNER normalizes to dinner via toLowerCase");
-console.log("✓ Invalid values return null, valid all-caps values normalize");
-
-console.log("\n✅ All normalize-meal-type tests passed!");
+  it("normalizes all-caps valid values", () => {
+    assert.equal(normalizeMealType("DINNER"), "dinner");
+  });
+});
