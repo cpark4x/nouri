@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# nouri
 
-## Getting Started
+**Help your kids hit their nutrition goals — without the battle.**
 
-First, run the development server:
+Nouri makes it easy for kids to track what they eat from their own phone or iPad, hit their daily targets for calcium, vitamin D, calories, and protein, and discover recipes made from ingredients they actually like.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Built by a dad who got tired of guessing whether his kids were getting enough of what they need.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What it does
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**For kids:**
+- Log meals quickly from their own device — phone or iPad
+- See their daily progress toward nutrition goals in a way that makes sense
+- AI-generated titles that make logging feel less like a chore
+- Discover new recipes built around healthy ingredients they already enjoy
 
-## Learn More
+**For parents:**
+- Set personalized daily goals per child (calcium, vitamin D, calories, protein — or anything else)
+- See what each child is eating and where the gaps are
+- AI suggests meals and recipe ideas based on each child's food preferences
+- Build a picture over time of what each kid actually likes to eat
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## The goals it tracks
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Calcium** — bone development
+- **Vitamin D** — immune function and calcium absorption
+- **Protein** — growth and muscle development
+- **Calories** — energy for active kids
+- **+ anything else** — fully configurable per child
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## How it works
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Each child gets their own dashboard. They log meals through a simple, fast interface — AI generates a clean title so they don't have to describe everything perfectly. The dashboard shows daily progress against their goals and surfaces gaps ("you're short on calcium today — here's what could help").
+
+Over time, nouri learns what each child likes and dislikes. That preference data feeds an AI recipe engine that suggests meals using ingredients they'll actually eat — making it easier to hit goals without forcing foods they hate.
+
+---
+
+## Stack
+
+Next.js · TypeScript · Prisma + PostgreSQL · Anthropic API
+
+---
+
+## Status
+
+Active development. Core meal logging, goal tracking, and AI suggestions are working. Recipe generation and preference learning in progress.
+
+---
+
+## Built by
+
+**Chris Park** — Senior PM, Microsoft Office of the CTO, AI Incubation group.
+Dad of kids who need their vitamin D.
+
+[LinkedIn](https://www.linkedin.com/in/chrispark1/) · [GitHub](https://github.com/cpark4x)
