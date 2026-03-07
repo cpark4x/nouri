@@ -5,6 +5,44 @@ Each session prepends an entry here before exiting.
 
 ---
 
+## Session: b5-nutrition-targets — 2026-03-07
+
+### What Was Done
+- Spec implemented: `/Users/chrispark/Projects/nouri/specs/features/phase1/b5-nutrition-targets.md`
+- **Files created:**
+  - `src/lib/targets/calculate.ts` — pure functions: `calculateTargets(profile)`, `deriveActivityLevel(activityProfile)`, `buildProfile(child)`; full USDA DRI table for 12 nutrients across 4 age brackets; PAL activity multipliers (1.3/1.5/1.7/2.0)
+  - `src/lib/targets/__tests__/calculate.test.ts` — 10 unit tests covering all spec acceptance criteria
+- **Files modified:**
+  - `src/app/api/child/[id]/update/route.ts` — replaced 70-line inline RDA calculation with `calculateTargets(buildProfile(updated))`; expanded recalculate trigger to include `heightChanged` (was only weight + activity); now upserts all 12 nutrients via `Promise.all`
+  - `src/components/profile/profile-form.tsx` — added "Targets will recalculate on save" amber notice when height, weight, or sports list differs from saved values; implemented as a cheap inline boolean comparison (no useMemo needed)
+  - `src/app/(app)/child/[id]/page.tsx` — added collapsible "How targets are set" section to Today tab; computes `calculateTargets` client-side from loaded child profile; shows each nutrient's amount/unit and its USDA DRI source string
+- **Tests added:** `src/lib/targets/__tests__/calculate.test.ts` (10 tests)
+- **All gates: PASS ✓**
+  - test: 10 files, 85 tests, 0 failures
+  - build: 36 routes, zero TypeScript errors
+  - lint: exit code 0 (warnings only, all pre-existing)
+- **Commit:** `4d32b8c feat(b5-nutrition-targets): extract target calculation to lib/targets/calculate.ts with UI transparency`
+
+### Decisions Made
+- **No schema change** — the spec said "no new API route needed" and source strings aren't stored in the DB. Instead, `calculateTargets` is called client-side inside the child detail page (it's a pure function with zero server imports, safe in `"use client"` components). This means source strings are always fresh from the current DRI table without any migration.
+- **`buildProfile` helper exported** — the route and (potentially) other callers need to convert from the DB `Child` shape to `ChildProfile`. Exported from `calculate.ts` so there's one place for that mapping logic.
+- **`deriveActivityLevel` mapping** — sports with avg intensity score ≥ 2.5 → `very_high`, ≥ 2.0 → `high`, ≥ 1.5 → `moderate`, else → `low`. Single high-intensity sport → score 3.0 → `very_high` (correct for Mason's hockey). Two moderate sports → score 2.0 → `high` (correct for Charlotte's gymnastics + dance).
+- **`heightChanged` added as recalculate trigger** — the spec acceptance criterion says height changes should trigger target recalculation. Height isn't used in the DRI formula directly but is part of `ChildProfile`, so the recalculate is correct behavior when any physical field changes.
+- **Inline IIFE for computed targets** in `page.tsx` — avoids adding a separate state variable or derived constant at the top of the component. The computation is cheap (pure synchronous function). Kept it co-located with the render section for readability.
+- **Simplified recalculate notice** — used a plain inline boolean comparison (not `useMemo`) since the comparison runs on every render and is trivially cheap.
+
+### Known Issues / Follow-up
+- Source strings appear in the "How targets are set" section computed from the *current profile in state* (loaded on page mount), not from the stored `DailyTarget` rows in the DB. If targets were seeded manually with different values, there could be a visual discrepancy. Acceptable for now — in practice, all targets will be set via `calculateTargets` after this spec ships.
+- The `activityProfile` in the existing seed data may still use the old sports-based intensity format. The `deriveActivityLevel` function handles this correctly (maps sport intensity strings to PAL levels).
+- `<img>` warnings remain in several components — pre-existing, acceptable per CONTEXT-TRANSFER baseline.
+
+### Handoff Notes
+- **Next spec to implement:** B7 — Past Meals History (`specs/features/phase1/b7-past-meals-history.md`)
+- `src/lib/targets/calculate.ts` is now the authoritative source for target values. Any future spec that touches DailyTargets should use `calculateTargets` + `buildProfile` rather than inline RDA logic.
+- Health gates are all green at `4d32b8c`.
+
+---
+
 ## Session: b4-day-navigation — 2026-03-07
 
 ### What Was Done
@@ -105,7 +143,7 @@ After schema changes: `npx prisma migrate dev --name <description>` then `npx pr
 ## Specs Ready to Implement (Phase 1)
 
 1. **B4: Day Navigation** ✅ SHIPPED — `667f71b`
-2. **B5: Nutrition Target Transparency** → `specs/features/phase1/b5-nutrition-targets.md` — HIGH priority
+2. **B5: Nutrition Target Transparency** ✅ SHIPPED — `4d32b8c`
 3. **B7: Past Meals History** → `specs/features/phase1/b7-past-meals-history.md` — MEDIUM priority
 4. **B8: Ingredient Constraints** → `specs/features/phase1/b8-ingredient-constraints.md` — MEDIUM priority
 

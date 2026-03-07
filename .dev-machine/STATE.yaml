@@ -14,7 +14,6 @@ specs:
   directory: /Users/chrispark/Projects/nouri/specs
   architecture: /Users/chrispark/Projects/nouri/specs/architecture.md
   features:
-    - /Users/chrispark/Projects/nouri/specs/features/phase1/b5-nutrition-targets.md
     - /Users/chrispark/Projects/nouri/specs/features/phase1/b7-past-meals-history.md
     - /Users/chrispark/Projects/nouri/specs/features/phase1/b8-ingredient-constraints.md
     # b6 (image editing bug) is BLOCKED — needs clarification from Chris on which flow is broken
@@ -31,10 +30,10 @@ health_gates:
   gates:
     - id: lint
       status: PASS
-      detail: "exit code 0; warnings on <img> usage (acceptable); fixed pre-existing (session as any) casts"
+      detail: "exit code 0; warnings on <img> usage (acceptable); pre-existing warnings only"
     - id: test
       status: PASS
-      detail: "9 files, 75 tests, 0 failures"
+      detail: "10 files, 85 tests, 0 failures"
     - id: build
       status: PASS
       detail: "36 routes compiled, zero TypeScript errors"
@@ -43,6 +42,15 @@ health_gates:
       detail: "No Playwright suite configured yet"
 
 recently_shipped:
+  - ref: "4d32b8c"
+    title: "B5: Nutrition target transparency"
+    files:
+      - src/lib/targets/calculate.ts
+      - src/lib/targets/__tests__/calculate.test.ts
+      - src/app/api/child/[id]/update/route.ts
+      - src/components/profile/profile-form.tsx
+      - src/app/(app)/child/[id]/page.tsx
+    tests_added: 10
   - ref: "667f71b"
     title: "B4: Day navigation on dashboard"
     files:
