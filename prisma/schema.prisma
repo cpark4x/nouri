@@ -87,11 +87,12 @@ model Child {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  family          Family           @relation(fields: [familyId], references: [id])
-  healthRecords   HealthRecord[]
-  foodPreferences FoodPreference[]
-  mealLogs        MealLog[]
-  dailyTargets    DailyTarget[]
+  family                Family                 @relation(fields: [familyId], references: [id])
+  healthRecords         HealthRecord[]
+  foodPreferences       FoodPreference[]
+  ingredientConstraints IngredientConstraint[]
+  mealLogs              MealLog[]
+  dailyTargets          DailyTarget[]
 }
 
 model HealthRecord {
@@ -117,6 +118,16 @@ model FoodPreference {
   updatedAt DateTime @updatedAt
 
   child Child @relation(fields: [childId], references: [id])
+}
+
+model IngredientConstraint {
+  id         String   @id @default(cuid())
+  childId    String
+  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  ingredient String // e.g. "peanuts", "dairy", "gluten"
+  reason     String? // e.g. "allergy", "intolerance", "preference"
+  severity   String   @default("avoid") // "avoid" | "allergy"
+  createdAt  DateTime @default(now())
 }
 
 model MealLog {

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ai } from "@/lib/ai/router";
-import { buildNouriSystemPrompt } from "@/lib/ai/nouri-system-prompt";
+import { buildFamilySystemPrompt } from "@/lib/ai/nouri-system-prompt";
 import type { ChatMessage } from "@/lib/ai/types";
 
 export async function POST(request: Request) {
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const systemPrompt = await buildNouriSystemPrompt(familyId);
+  const systemPrompt = await buildFamilySystemPrompt(familyId);
 
   // Load last 20 messages for conversation context
   const recentMessages = await prisma.chatMessage.findMany({

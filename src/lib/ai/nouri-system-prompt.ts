@@ -1,4 +1,53 @@
-import { prisma } from "@/lib/db";
+// ── Pure synchronous prompt builder (no DB — fully testable) ─────────────────
+
+export interface IngredientConstraintInput {
+  ingredient: string;
+  severity: string; // "allergy" | "intolerance" | "avoid"
+}
+
+export interface NouriPromptOptions {
+  childName?: string;
+  childAge?: number;
+  ingredientConstraints?: IngredientConstraintInput[];
+}
+
+/**
+ * Builds a focused Nouri system prompt from explicit options.
+ * Pure synchronous function — no DB access. Used for testing and
+ * lightweight prompt contexts. The full family-aware prompt is in
+ * buildFamilySystemPrompt() below.
+ */
+export function buildNouriSystemPrompt(options: NouriPromptOptions): string {
+  const sections: string[] = [];
+
+  sections.push("You are Nouri, a pediatric nutrition intelligence assistant.");
+
+  if (options.childName) {
+    const age = options.childAge ? `, age ${options.childAge}` : "";
+    sections.push(`Child: ${options.childName}${age}`);
+  }
+
+  if (options.ingredientConstraints && options.ingredientConstraints.length > 0) {
+    const lines: string[] = [
+      "NEVER suggest or recommend foods containing the following ingredients:",
+    ];
+    for (const c of options.ingredientConstraints) {
+      const tag =
+        c.severity === "allergy"
+          ? " (ALLERGY — strict avoidance)"
+          : ` (${c.severity})`;
+      lines.push(`- ${c.ingredient}${tag}`);
+    }
+    lines.push(
+      "\nThis applies to ALL meal tips, suggestions, recipe recommendations, and chat responses.",
+    );
+    sections.push(lines.join("\n"));
+  }
+
+  return sections.join("\n\n");
+}
+
+// ── Full family-aware prompt (async, DB-backed) ───────────────────────────────
 
 function calculateAge(dateOfBirth: Date): number {
   const today = new Date();
@@ -35,15 +84,27 @@ interface ActivityProfile {
   sports?: ActivitySport[];
 }
 
-export async function buildNouriSystemPrompt(
+/**
+ * Builds the full Nouri system prompt for the AI chat route.
+ * Fetches all family data from the database including ingredient constraints.
+ * Renamed from buildNouriSystemPrompt to avoid conflicts with the pure
+ * synchronous version above.
+ */
+export async function buildFamilySystemPrompt(
   familyId: string,
 ): Promise<string> {
+  // Dynamic import keeps prisma out of the module's top-level scope,
+  // allowing the pure buildNouriSystemPrompt() to be imported and tested
+  // without a database connection.
+  const { prisma } = await import("../db");
+
   const family = await prisma.family.findUnique({
     where: { id: familyId },
     include: {
       children: {
         include: {
           foodPreferences: true,
+          ingredientConstraints: true,
           dailyTargets: true,
           healthRecords: {
             where: { type: "blood_work" },
@@ -121,6 +182,24 @@ export async function buildNouriSystemPrompt(
         }
       }
       lines.push(`- Food preferences: ${parts.join("; ")}`);
+    }
+
+    // Ingredient constraints
+    if (child.ingredientConstraints.length > 0) {
+      const constraintLines: string[] = [
+        "- NEVER suggest or recommend foods containing the following ingredients:",
+      ];
+      for (const c of child.ingredientConstraints) {
+        const tag =
+          c.severity === "allergy"
+            ? " (ALLERGY — strict avoidance)"
+            : ` (${c.severity})`;
+        constraintLines.push(`  - ${c.ingredient}${tag}`);
+      }
+      constraintLines.push(
+        "  This applies to ALL meal tips, suggestions, recipe recommendations, and chat responses.",
+      );
+      lines.push(constraintLines.join("\n"));
     }
 
     // Recent meals summary

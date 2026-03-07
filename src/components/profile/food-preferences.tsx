@@ -9,6 +9,13 @@ interface Preference {
   notes: string | null;
 }
 
+interface Constraint {
+  id: string;
+  ingredient: string;
+  severity: string;
+  reason: string | null;
+}
+
 const RATINGS = [
   { value: "love", emoji: "\u2764\ufe0f", label: "Love" },
   { value: "like", emoji: "\ud83d\udc4d", label: "Like" },
@@ -17,8 +24,18 @@ const RATINGS = [
   { value: "hate", emoji: "\ud83d\udeab", label: "Hate" },
 ];
 
+const SEVERITIES = [
+  { value: "allergy", label: "Allergy" },
+  { value: "intolerance", label: "Intolerance" },
+  { value: "avoid", label: "Preference" },
+];
+
 function ratingEmoji(rating: string): string {
   return RATINGS.find((r) => r.value === rating)?.emoji || "?";
+}
+
+function severityLabel(severity: string): string {
+  return SEVERITIES.find((s) => s.value === severity)?.label ?? severity;
 }
 
 export default function FoodPreferences({
@@ -27,6 +44,7 @@ export default function FoodPreferences({
   childId: string;
 }) {
   const [preferences, setPreferences] = useState<Preference[]>([]);
+  const [constraints, setConstraints] = useState<Constraint[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
@@ -34,19 +52,25 @@ export default function FoodPreferences({
     text: string;
   } | null>(null);
 
-  // Add form
+  // Add preference form
   const [newFood, setNewFood] = useState("");
   const [newRating, setNewRating] = useState("like");
   const [newNotes, setNewNotes] = useState("");
 
-  // Inline edit
+  // Inline edit preference
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFood, setEditFood] = useState("");
   const [editRating, setEditRating] = useState("");
   const [editNotes, setEditNotes] = useState("");
 
+  // Add constraint form
+  const [newIngredient, setNewIngredient] = useState("");
+  const [newSeverity, setNewSeverity] = useState("avoid");
+  const [savingConstraint, setSavingConstraint] = useState(false);
+
   useEffect(() => {
     fetchPreferences();
+    fetchConstraints();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childId]);
 
@@ -60,6 +84,17 @@ export default function FoodPreferences({
       // silently fail
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchConstraints() {
+    try {
+      const res = await fetch(`/api/child/${childId}/constraints`);
+      if (res.ok) {
+        setConstraints(await res.json());
+      }
+    } catch {
+      // silently fail
     }
   }
 
@@ -134,9 +169,45 @@ export default function FoodPreferences({
     }
   }
 
+  async function handleAddConstraint() {
+    if (!newIngredient.trim()) return;
+    setSavingConstraint(true);
+    try {
+      const res = await fetch(`/api/child/${childId}/constraints`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ingredient: newIngredient.trim(),
+          severity: newSeverity,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setNewIngredient("");
+      setNewSeverity("avoid");
+      fetchConstraints();
+    } catch {
+      setMessage({ type: "error", text: "Failed to save ingredient constraint" });
+    } finally {
+      setSavingConstraint(false);
+    }
+  }
+
+  async function handleDeleteConstraint(constraintId: string) {
+    try {
+      const res = await fetch(
+        `/api/child/${childId}/constraints?id=${constraintId}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) throw new Error("Failed to delete");
+      fetchConstraints();
+    } catch {
+      setMessage({ type: "error", text: "Failed to delete constraint" });
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* ── Add New ── */}
+      {/* ── Add New Preference ── */}
       <div className="rounded-lg border border-gray-200 p-4">
         <h3 className="mb-4 text-sm font-semibold text-gray-900">
           Add Food Preference
@@ -292,10 +363,88 @@ export default function FoodPreferences({
                     Delete
                   </button>
                 </div>
-              )
+              ),
             )}
           </div>
         )}
+      </div>
+
+      {/* ── Ingredients to Avoid ── */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <h3 className="mb-1 text-sm font-semibold text-gray-900">
+          Ingredients to Avoid
+        </h3>
+        <p className="mb-4 text-xs text-gray-500">
+          Nouri will never suggest foods containing these ingredients.
+        </p>
+
+        {/* Existing constraints */}
+        {constraints.length > 0 && (
+          <div className="mb-4 space-y-2">
+            {constraints.map((c) => (
+              <div
+                key={c.id}
+                className="flex items-center justify-between rounded-lg border border-amber-200 bg-white px-3 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-900">
+                    {c.ingredient}
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      c.severity === "allergy"
+                        ? "bg-red-100 text-red-700"
+                        : c.severity === "intolerance"
+                          ? "bg-orange-100 text-orange-700"
+                          : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {severityLabel(c.severity)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteConstraint(c.id)}
+                  className="ml-2 text-sm text-red-500 hover:text-red-700"
+                  aria-label={`Remove ${c.ingredient}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add constraint form */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newIngredient}
+            onChange={(e) => setNewIngredient(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddConstraint()}
+            placeholder="Ingredient (e.g. peanuts)"
+            className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+          />
+          <select
+            value={newSeverity}
+            onChange={(e) => setNewSeverity(e.target.value)}
+            className="rounded-lg border border-gray-200 px-2 py-2 text-sm focus:border-amber-500 focus:outline-none"
+          >
+            {SEVERITIES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleAddConstraint}
+            disabled={savingConstraint || !newIngredient.trim()}
+            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+          >
+            {savingConstraint ? "..." : "Add"}
+          </button>
+        </div>
       </div>
     </div>
   );
