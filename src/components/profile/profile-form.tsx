@@ -38,6 +38,13 @@ export default function ProfileForm({ child, onUpdate }: ProfileFormProps) {
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Detect changes to physical/activity fields so we can show the recalculate notice.
+  // Computed inline — cheap boolean, no need for useMemo.
+  const profileWillRecalculate =
+    heightCm !== (child.heightCm?.toString() ?? "") ||
+    weightKg !== (child.weightKg?.toString() ?? "") ||
+    JSON.stringify(sports) !== JSON.stringify(child.activityProfile?.sports ?? []);
+
   const [newSport, setNewSport] = useState({
     name: "",
     frequency: "",
@@ -259,6 +266,14 @@ export default function ProfileForm({ child, onUpdate }: ProfileFormProps) {
           }`}
         >
           {message.text}
+        </p>
+      )}
+
+      {/* Recalculate notice — shown when height, weight, or activity changes */}
+      {profileWillRecalculate && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          ✦ Nutrient targets will recalculate on save based on updated height,
+          weight, or activity level.
         </p>
       )}
 

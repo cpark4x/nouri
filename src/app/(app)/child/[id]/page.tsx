@@ -9,6 +9,11 @@ import { WeeklyChart } from "@/components/dashboard/weekly-chart";
 import { WeeklySummary } from "@/components/dashboard/weekly-summary";
 import { WeeklyInsight } from "@/components/dashboard/weekly-insight";
 import type { DayData } from "@/components/dashboard/weekly-chart";
+import {
+  calculateTargets,
+  deriveActivityLevel,
+} from "@/lib/targets/calculate";
+import type { ChildProfile } from "@/lib/targets/calculate";
 
 interface ChildDetail {
   id: string;
@@ -48,6 +53,28 @@ const MORE_NUTRIENTS: { key: string; label: string }[] = [
   { key: "calcium", label: "Calcium" },
   { key: "vitaminD", label: "Vitamin D" },
 ];
+
+/** Human-readable nutrient names for the "How targets are set" section. */
+const NUTRIENT_LABELS: Record<string, string> = {
+  calories: "Calories",
+  protein: "Protein",
+  calcium: "Calcium",
+  vitaminD: "Vitamin D",
+  iron: "Iron",
+  zinc: "Zinc",
+  magnesium: "Magnesium",
+  potassium: "Potassium",
+  vitaminA: "Vitamin A",
+  vitaminC: "Vitamin C",
+  fiber: "Fiber",
+  omega3: "Omega-3",
+};
+
+/** Format a numeric nutrient amount with its unit for display. */
+function formatTargetAmount(amount: number, unit: string): string {
+  const formatted = amount >= 1000 ? amount.toLocaleString() : String(amount);
+  return `${formatted}\u202f${unit}`; // narrow no-break space before unit
+}
 
 function ProfileSkeleton() {
   return (
@@ -115,6 +142,9 @@ export default function ChildDetailPage() {
 
   // Collapsible more-nutrients section
   const [showMoreCharts, setShowMoreCharts] = useState(false);
+
+  // Collapsible "How targets are set" section
+  const [showTargetSources, setShowTargetSources] = useState(false);
 
   // Fetch today's data
   useEffect(() => {
@@ -308,12 +338,62 @@ export default function ChildDetailPage() {
       {activeTab === "today" && (
         <div role="tabpanel" id="panel-today" aria-labelledby="tab-today">
           {/* Nutrition Section */}
-          <section className="mb-8 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <section className="mb-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <NutrientDetail
               targets={child.targets}
               todayIntake={child.todayIntake}
             />
           </section>
+
+          {/* How Targets Are Set — collapsible explainer */}
+          {(() => {
+            const profile: ChildProfile = {
+              ageYears: child.age,
+              gender: child.gender === "female" ? "female" : "male",
+              weightKg: child.weightKg ?? 0,
+              heightCm: child.heightCm ?? 0,
+              activityLevel: deriveActivityLevel(child.activityProfile),
+            };
+            const computedTargets = calculateTargets(profile);
+            return (
+              <section className="mb-8">
+                <button
+                  type="button"
+                  aria-expanded={showTargetSources}
+                  onClick={() => setShowTargetSources((prev) => !prev)}
+                  className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  <span>How targets are set</span>
+                  <span className="text-xs text-gray-400" aria-hidden="true">
+                    {showTargetSources ? "▲" : "▼"}
+                  </span>
+                </button>
+
+                {showTargetSources && (
+                  <div className="mt-1 rounded-b-lg border border-t-0 border-gray-200 bg-white px-4 pb-4 pt-3">
+                    <p className="mb-3 text-xs text-gray-500">
+                      Targets use USDA Dietary Reference Intakes (DRI) for{" "}
+                      {child.age}yo {child.gender === "female" ? "females" : "males"},{" "}
+                      adjusted for activity level.
+                    </p>
+                    <ul className="space-y-2">
+                      {computedTargets.map((t) => (
+                        <li key={t.nutrient} className="text-xs">
+                          <span className="font-medium text-gray-800">
+                            {NUTRIENT_LABELS[t.nutrient] ?? t.nutrient}:{" "}
+                            {formatTargetAmount(t.amount, t.unit)}/day
+                          </span>
+                          <span className="ml-1 text-gray-500">
+                            — {t.source}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </section>
+            );
+          })()}
 
           {/* Meals Section */}
           <section>
