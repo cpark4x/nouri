@@ -51,8 +51,8 @@ tags: ["dev-machine", "nouri", "build-loop", "nextjs", "typescript", "tdd"]
 # loop_done is managed by the loop; do not set it manually.
 # ---------------------------------------------------------------------------
 context:
-  # Loop state (managed automatically)
-  loop_done: ""
+  # Loop state — 0 = keep going, 1 = all specs done (numeric avoids == / != operators)
+  done_flag: 0
 
   # Absolute paths — frozen for this project
   project_root:           "/Users/chrispark/Projects/nouri"
@@ -73,7 +73,7 @@ steps:
   - id: "build-loop"
     type: "bash"
     command: "echo 'loop-iteration-complete'"   # body replaced by while_steps each iteration
-    while_condition: "{{loop_done}} != 'DONE'"
+    while_condition: "{{done_flag}} < 1"
     max_while_iterations: 10
 
     while_steps:
@@ -109,14 +109,14 @@ steps:
           {
             "spec_path": "<absolute path to the spec file, exactly as it appears in specs.features>",
             "spec_name": "<filename without directory, without extension>",
-            "done": "false"
+            "done_flag": 0
           }
 
           When every spec in specs.features already appears in recently_shipped:
           {
             "spec_path": "DONE",
             "spec_name": "DONE",
-            "done": "true"
+            "done_flag": 1
           }
 
           Output ONLY the JSON object. Nothing else.
@@ -129,7 +129,7 @@ steps:
       # starts clean and reads all context files itself.
       # -----------------------------------------------------------------------
       - id: "implement-spec"
-        condition: "{{spec_result.spec_path}} != 'DONE'"
+        condition: "{{spec_result.done_flag}} < 1"
         agent: "foundation:zen-architect"
         mode: "ARCHITECT"
         timeout: 3600   # 60 min — complex TDD cycles can take a while
@@ -311,10 +311,10 @@ steps:
 
     # After each iteration: propagate the spec path so break_when can read it
     update_context:
-      loop_done: "{{spec_result.spec_path}}"
+      done_flag: "{{spec_result.done_flag}}"
 
-    # Exit the loop immediately when the finder returns "DONE"
-    break_when: "{{spec_result.spec_path}} == 'DONE'"
+    # Exit the loop immediately when the finder sets done_flag to 1
+    break_when: "{{done_flag}} > 0"
 
   # ===========================================================================
   # STEP 2: BUILD SUMMARY

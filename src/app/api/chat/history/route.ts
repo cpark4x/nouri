@@ -9,7 +9,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const familyId = (session as any).familyId as string | undefined;
+  const familyId = session.familyId ?? undefined;
   if (!familyId) {
     return NextResponse.json(
       { error: "No family profile found" },

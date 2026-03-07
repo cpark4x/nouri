@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChildCard } from "@/components/dashboard/child-card";
+import {
+  subDays,
+  addDays,
+  isSameDay,
+  toDateParam,
+  formatDateLabel,
+} from "@/app/api/dashboard/logic";
 
 interface ChildData {
   id: string;
@@ -12,14 +19,6 @@ interface ChildData {
   targets: Record<string, { target: number; unit: string }>;
   todayIntake: Record<string, { amount: number; unit: string }>;
   todayMeals: { mealType: string; logged: boolean; summary?: string }[];
-}
-
-function formatDate(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
 }
 
 function SkeletonCard() {
@@ -53,11 +52,19 @@ function SkeletonCard() {
 export default function DashboardPage() {
   const [children, setChildren] = useState<ChildData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  const goBack = () => setSelectedDate((d) => subDays(d, 1));
+  const goForward = () => setSelectedDate((d) => addDays(d, 1));
+  const isToday = isSameDay(selectedDate, new Date());
+  const dateLabel = formatDateLabel(selectedDate);
 
   useEffect(() => {
+    setLoading(true);
     async function fetchDashboard() {
       try {
-        const res = await fetch("/api/dashboard");
+        const dateParam = toDateParam(selectedDate);
+        const res = await fetch(`/api/dashboard?date=${dateParam}`);
         if (res.ok) {
           const data = await res.json();
           setChildren(data.children ?? []);
@@ -69,14 +76,31 @@ export default function DashboardPage() {
       }
     }
     fetchDashboard();
-  }, []);
+  }, [selectedDate]);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
-      {/* Date header */}
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">
-        {formatDate(new Date())}
-      </h1>
+      {/* Date navigation */}
+      <div className="mb-6 flex items-center gap-2">
+        <button
+          onClick={goBack}
+          className="rounded-lg p-2 text-xl leading-none text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          aria-label="Previous day"
+        >
+          ‹
+        </button>
+        <h1 className="flex-1 text-center text-xl font-semibold text-gray-900">
+          {dateLabel}
+        </h1>
+        <button
+          onClick={goForward}
+          disabled={isToday}
+          className="rounded-lg p-2 text-xl leading-none text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Next day"
+        >
+          ›
+        </button>
+      </div>
 
       {/* Loading state */}
       {loading && (
@@ -91,7 +115,7 @@ export default function DashboardPage() {
         <>
           <div className="grid gap-5 md:grid-cols-2">
             {children.map((child) => (
-              <ChildCard key={child.id} {...child} />
+              <ChildCard key={child.id} {...child} selectedDate={selectedDate} />
             ))}
           </div>
 

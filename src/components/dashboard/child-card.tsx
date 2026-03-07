@@ -13,6 +13,8 @@ interface ChildCardProps {
   targets: Record<string, { target: number; unit: string }>;
   todayIntake: Record<string, { amount: number; unit: string }>;
   todayMeals: { mealType: string; logged: boolean; summary?: string }[];
+  /** The currently selected date — passed from the dashboard page. */
+  selectedDate: Date;
 }
 
 const PRIMARY_NUTRIENTS = [
@@ -30,11 +32,14 @@ export function ChildCard({
   targets,
   todayIntake,
   todayMeals,
+  selectedDate,
 }: ChildCardProps) {
   const initial = name.charAt(0).toUpperCase();
 
   const [suggestion, setSuggestion] = useState<string | null>(null);
 
+  // Re-fetch suggestions whenever the child or selected date changes so the
+  // tip reflects what has (or hasn't) been eaten that day.
   useEffect(() => {
     fetch(`/api/child/${id}/suggestions`)
       .then((res) => {
@@ -49,7 +54,7 @@ export function ChildCard({
       .catch(() => {
         // Silently skip on error — suggestions are non-critical
       });
-  }, [id]);
+  }, [id, selectedDate]);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm">

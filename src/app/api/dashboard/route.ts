@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ALLOWED_MEAL_TYPES } from "@/app/api/log/save/normalize-meal-type";
+import { parseDateParam, buildDateWindow } from "./logic";
 
 function calculateAge(dateOfBirth: Date): number {
   const today = new Date();
@@ -17,19 +18,7 @@ function calculateAge(dateOfBirth: Date): number {
   return age;
 }
 
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function endOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
-
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session) {
@@ -42,9 +31,10 @@ export async function GET() {
     return NextResponse.json({ children: [] });
   }
 
-  const now = new Date();
-  const todayStart = startOfDay(now);
-  const todayEnd = endOfDay(now);
+  const url = new URL(request.url);
+  const dateParam = url.searchParams.get("date");
+  const targetDate = parseDateParam(dateParam);
+  const { start, end } = buildDateWindow(targetDate);
 
   let children;
   try {
@@ -55,8 +45,8 @@ export async function GET() {
         mealLogs: {
           where: {
             date: {
-              gte: todayStart,
-              lte: todayEnd,
+              gte: start,
+              lt: end,
             },
           },
           include: {
