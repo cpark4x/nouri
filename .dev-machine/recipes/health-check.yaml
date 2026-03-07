@@ -1,0 +1,158 @@
+# =============================================================================
+# NOURI DEV MACHINE — HEALTH CHECK LOOP
+# =============================================================================
+#
+# Runs all quality gates. If failures are found, dispatches a surgical fix
+# session. Loops until clean or max iterations hit.
+#
+# Use this when:
+#   - A build.yaml run left the project in a broken state
+#   - You want to verify the project is healthy before starting a new run
+#   - TypeScript or lint errors crept in that the build machine didn't fix
+#
+# Usage:
+#   amplifier recipes execute .dev-machine/recipes/health-check.yaml
+#
+# =============================================================================
+
+name: "nouri-health-check"
+description: >
+  Health check loop for Nouri. Runs test + build + lint gates. If failures
+  are found, dispatches a surgical fix session and re-checks. Repeats until
+  clean or max iterations hit.
+version: "1.0.0"
+author: "Nouri Dev Machine"
+created: "2026-03-07T00:00:00Z"
+tags: ["dev-machine", "nouri", "health-check", "nextjs", "typescript"]
+
+context:
+  health_status: "unknown"
+  gate_output: ""
+  project_root: "/Users/chrispark/Projects/nouri"
+
+steps:
+
+  # ===========================================================================
+  # STEP 1: INITIAL GATE RUN
+  # ===========================================================================
+  - id: "run-gates"
+    type: "bash"
+    command: |
+      cd /Users/chrispark/Projects/nouri
+      echo "=== TEST GATE ===" && npm test 2>&1; TEST_EXIT=$?
+      echo "=== BUILD GATE ===" && npm run build 2>&1; BUILD_EXIT=$?
+      echo "=== LINT GATE ===" && npm run lint 2>&1; LINT_EXIT=$?
+      if [ $TEST_EXIT -eq 0 ] && [ $BUILD_EXIT -eq 0 ] && [ $LINT_EXIT -eq 0 ]; then
+        echo "GATES_RESULT: CLEAN"
+      else
+        echo "GATES_RESULT: FAILING (test=$TEST_EXIT build=$BUILD_EXIT lint=$LINT_EXIT)"
+      fi
+    output: "gate_output"
+    timeout: 300
+
+  # ===========================================================================
+  # STEP 2: FIX LOOP — runs only if gates failed
+  # ===========================================================================
+  - id: "fix-loop"
+    type: "bash"
+    command: "echo 'checking if fix loop needed'"
+    while_condition: "{{health_status}} != 'CLEAN'"
+    max_while_iterations: 5
+
+    while_steps:
+
+      # Parse the gate output to determine status
+      - id: "parse-gate-status"
+        agent: "foundation:file-ops"
+        model_role: "fast"
+        parse_json: true
+        timeout: 60
+        prompt: |
+          Read the gate output below and return ONLY a raw JSON object.
+          No markdown fences, no prose.
+
+          GATE OUTPUT:
+          {{gate_output}}
+
+          Return:
+          {
+            "status": "CLEAN" or "FAILING",
+            "summary": "one line: what failed (or 'All gates passed')"
+          }
+        output: "gate_result"
+
+      # Dispatch fix session if still failing
+      - id: "dispatch-fix"
+        condition: "{{gate_result.status}} == 'FAILING'"
+        agent: "foundation:modular-builder"
+        model_role: "coding"
+        timeout: 1800
+        agent_config:
+          context_depth: "none"
+        prompt: |
+          You are a SURGICAL FIX AGENT for the Nouri Next.js/TypeScript project.
+          Fix build and test failures ONLY. Do not add features. Minimal changes.
+
+          PROJECT ROOT: /Users/chrispark/Projects/nouri
+
+          STEP 1 — Read context (mandatory):
+          - /Users/chrispark/Projects/nouri/specs/architecture.md
+          - /Users/chrispark/Projects/nouri/.dev-machine/CONTEXT-TRANSFER.md
+
+          STEP 2 — Understand the failures:
+          {{gate_output}}
+
+          STEP 3 — Fix with minimal changes:
+          - Read only the failing files
+          - Make the smallest change that fixes the error
+          - Do NOT restructure code or add dependencies
+
+          STEP 4 — Verify all three gates pass:
+              cd /Users/chrispark/Projects/nouri && npm test
+              cd /Users/chrispark/Projects/nouri && npm run build
+              cd /Users/chrispark/Projects/nouri && npm run lint
+
+          STEP 5 — If all gates pass, commit:
+              cd /Users/chrispark/Projects/nouri && git add -A
+              cd /Users/chrispark/Projects/nouri && git commit -m "fix: resolve build/test/lint failures"
+
+          Return plain text:
+          FIXED: <what you fixed>
+          GATES: tests=X build=X lint=X
+        output: "fix_result"
+
+      # Re-run gates after fix attempt
+      - id: "re-run-gates"
+        type: "bash"
+        command: |
+          cd /Users/chrispark/Projects/nouri
+          echo "=== RE-CHECK: TEST ===" && npm test 2>&1; TEST_EXIT=$?
+          echo "=== RE-CHECK: BUILD ===" && npm run build 2>&1; BUILD_EXIT=$?
+          echo "=== RE-CHECK: LINT ===" && npm run lint 2>&1; LINT_EXIT=$?
+          if [ $TEST_EXIT -eq 0 ] && [ $BUILD_EXIT -eq 0 ] && [ $LINT_EXIT -eq 0 ]; then
+            echo "GATES_RESULT: CLEAN"
+          else
+            echo "GATES_RESULT: FAILING (test=$TEST_EXIT build=$BUILD_EXIT lint=$LINT_EXIT)"
+          fi
+        output: "gate_output"
+        timeout: 300
+
+    update_context:
+      health_status: "{{gate_result.status}}"
+    break_when: "{{gate_result.status}} == 'CLEAN'"
+
+  # ===========================================================================
+  # STEP 3: FINAL REPORT
+  # ===========================================================================
+  - id: "health-report"
+    agent: "foundation:file-ops"
+    model_role: "fast"
+    timeout: 60
+    prompt: |
+      Write a 2-3 sentence health check report based on:
+      - Final gate output: {{gate_output}}
+
+      If clean: "All health gates pass. Tests, build, and lint are green."
+      If still failing: "Health check did not fully resolve failures after fix attempts.
+      Remaining issues: [summary]. Manual intervention required."
+    output: "health_report"

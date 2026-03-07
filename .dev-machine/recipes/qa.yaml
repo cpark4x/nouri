@@ -1,0 +1,222 @@
+# =============================================================================
+# NOURI DEV MACHINE — QA MACHINE
+# =============================================================================
+#
+# Browser-based QA testing of the live Nouri app.
+# Tests the core user flows that unit tests can't cover.
+#
+# PREREQUISITES (run once before first use):
+#   1. Start the dev server: cd /Users/chrispark/Projects/nouri && npm run dev
+#   2. Bootstrap auth session (first time only):
+#      agent-browser --session nouri-qa open http://localhost:3000
+#      → Sign in with GitHub OAuth in the browser window
+#      → Close the window when signed in (session is saved)
+#
+# After bootstrapping, the session persists across runs.
+# Re-authenticate if you see "AUTH REQUIRED" in QA results.
+#
+# Usage:
+#   amplifier recipes execute .dev-machine/recipes/qa.yaml
+#
+# =============================================================================
+
+name: "nouri-qa"
+description: >
+  QA machine for Nouri. Browser-based testing of the live app at localhost:3000.
+  Tests dashboard, day navigation, child detail, and meal logging flows.
+  Requires npm run dev to be running and a bootstrapped nouri-qa browser session.
+version: "1.0.0"
+author: "Nouri Dev Machine"
+created: "2026-03-07T00:00:00Z"
+tags: ["dev-machine", "nouri", "qa", "browser", "nextjs"]
+
+context:
+  qa_url: "http://localhost:3000"
+  project_root: "/Users/chrispark/Projects/nouri"
+  screenshots_dir: "/Users/chrispark/Projects/nouri/test-evidence"
+
+steps:
+
+  # ===========================================================================
+  # STEP 1: CORE NAVIGATION FLOWS
+  # Dashboard, day navigation, child detail
+  # ===========================================================================
+  - id: "qa-navigation"
+    agent: "browser-tester:browser-operator"
+    model_role: "vision"
+    timeout: 300
+    agent_config:
+      context_depth: "none"
+    prompt: |
+      You are a QA tester for Nouri, a family nutrition tracking app.
+      Test the following flows using agent-browser with the nouri-qa session.
+
+      ─────────────────────────────────────────────────────────
+      SETUP
+      ─────────────────────────────────────────────────────────
+      agent-browser --session nouri-qa open http://localhost:3000
+
+      Take a snapshot immediately:
+      agent-browser --session nouri-qa snapshot -ic
+
+      AUTH CHECK: If you see a sign-in page instead of the dashboard,
+      STOP and report: "AUTH REQUIRED: Session expired. Re-run bootstrap."
+
+      ─────────────────────────────────────────────────────────
+      FLOW 1: Dashboard loads correctly
+      ─────────────────────────────────────────────────────────
+      Verify each of these is present in the snapshot:
+      □ At least one child card (Mason or Charlotte)
+      □ Nutrient progress bars visible
+      □ Navigation bar at bottom (or top)
+      □ "Log meal" entry point visible
+
+      agent-browser --session nouri-qa screenshot /Users/chrispark/Projects/nouri/test-evidence/qa-01-dashboard.png
+
+      ─────────────────────────────────────────────────────────
+      FLOW 2: Day navigation (if B4 is implemented)
+      ─────────────────────────────────────────────────────────
+      Look for prev/next arrows or a date display in the snapshot.
+
+      If day navigation controls exist:
+        1. Find and click the "<" (back) arrow
+        2. Snapshot: verify date label changes to "Yesterday" or a date string
+        3. Find and click the ">" (forward) arrow
+        4. Snapshot: verify date label returns to "Today"
+        5. Verify the ">" arrow is disabled/grayed when on Today
+
+      If day navigation does NOT exist: mark as "NOT YET IMPLEMENTED"
+
+      ─────────────────────────────────────────────────────────
+      FLOW 3: Child detail page
+      ─────────────────────────────────────────────────────────
+      1. Click on a child card (Mason or Charlotte)
+      2. Snapshot the child detail page
+      3. Verify: child's name visible
+      4. Verify: "Today" tab is selected and showing meal list or empty state
+      5. Click "This Week" tab
+      6. Verify: weekly chart or summary appears
+      7. agent-browser --session nouri-qa screenshot /Users/chrispark/Projects/nouri/test-evidence/qa-02-child-detail.png
+      8. Navigate back (click back button or browser back)
+
+      ─────────────────────────────────────────────────────────
+      Return this EXACT format:
+      ─────────────────────────────────────────────────────────
+      FLOW 1 (Dashboard): PASS/FAIL — <one line: what you saw>
+      FLOW 2 (Day navigation): PASS/FAIL/NOT-IMPLEMENTED — <one line>
+      FLOW 3 (Child detail): PASS/FAIL — <one line: what you saw>
+      SCREENSHOTS: qa-01-dashboard.png, qa-02-child-detail.png (or FAILED if not captured)
+      AUTH: OK or REQUIRED
+    output: "navigation_result"
+
+  # ===========================================================================
+  # STEP 2: MEAL LOGGING FLOW
+  # Text input → AI parse → confirmation
+  # ===========================================================================
+  - id: "qa-meal-logging"
+    agent: "browser-tester:browser-operator"
+    model_role: "vision"
+    timeout: 300
+    agent_config:
+      context_depth: "none"
+    prompt: |
+      You are a QA tester for Nouri. Continue testing from the dashboard.
+
+      If AUTH REQUIRED was reported in previous result, skip all flows and return:
+      "SKIPPED: auth session expired"
+
+      agent-browser --session nouri-qa open http://localhost:3000
+
+      ─────────────────────────────────────────────────────────
+      FLOW 4: Navigate to meal log
+      ─────────────────────────────────────────────────────────
+      agent-browser --session nouri-qa snapshot -ic
+
+      Look for a way to log a meal:
+      - A "+" button, "Log meal" button, or log icon in the nav bar
+      - Or a button inside a child card
+
+      Click the meal log entry point for one of the children.
+      Snapshot the resulting page.
+      Verify: text input field is visible for typing a meal description.
+
+      ─────────────────────────────────────────────────────────
+      FLOW 5: Text input → AI parse
+      ─────────────────────────────────────────────────────────
+      1. Find the meal description text input
+      2. Type a test meal: "scrambled eggs with toast and orange juice"
+         agent-browser --session nouri-qa fill @<ref> "scrambled eggs with toast and orange juice"
+      3. Find and click the submit/parse button
+      4. Wait up to 20 seconds — poll with snapshot every 5 seconds
+         Look for: loading indicator disappearing, meal title appearing, nutrition breakdown
+      5. Verify: parsed result shows a meal title (e.g. "Scrambled Eggs with Toast")
+      6. Verify: some nutrition numbers are visible (calories, protein, etc.)
+      7. agent-browser --session nouri-qa screenshot /Users/chrispark/Projects/nouri/test-evidence/qa-03-meal-parsed.png
+
+      IMPORTANT: Do NOT click Save/Confirm — just verify the parse result appeared.
+
+      ─────────────────────────────────────────────────────────
+      Return this EXACT format:
+      ─────────────────────────────────────────────────────────
+      FLOW 4 (Navigate to log): PASS/FAIL — <one line: what you saw>
+      FLOW 5 (AI parse): PASS/FAIL — <one line: what you saw>
+      SCREENSHOTS: qa-03-meal-parsed.png (or FAILED if not captured)
+      PARSE_TITLE: <the meal title that appeared, or NONE>
+    output: "logging_result"
+
+  # ===========================================================================
+  # STEP 3: QA REPORT
+  # Compile results and write report to test-evidence/
+  # ===========================================================================
+  - id: "qa-report"
+    agent: "foundation:file-ops"
+    model_role: "fast"
+    timeout: 120
+    prompt: |
+      Compile a QA report from these results and write it to a file.
+
+      NAVIGATION RESULTS:
+      {{navigation_result}}
+
+      MEAL LOGGING RESULTS:
+      {{logging_result}}
+
+      Write this EXACT Markdown to:
+      /Users/chrispark/Projects/nouri/test-evidence/qa-report-latest.md
+
+      # Nouri QA Report
+
+      **Date:** [today's date]
+      **URL tested:** http://localhost:3000
+
+      ## Summary
+
+      | Flow | Status |
+      |------|--------|
+      | Dashboard loads | [PASS/FAIL from Flow 1] |
+      | Day navigation | [PASS/FAIL/NOT-IMPLEMENTED from Flow 2] |
+      | Child detail page | [PASS/FAIL from Flow 3] |
+      | Navigate to meal log | [PASS/FAIL from Flow 4] |
+      | AI meal parse | [PASS/FAIL from Flow 5] |
+
+      ## Details
+
+      ### Navigation
+      [Copy the FLOW 1-3 lines from navigation_result]
+
+      ### Meal Logging
+      [Copy the FLOW 4-5 lines from logging_result]
+
+      ## Screenshots
+      - test-evidence/qa-01-dashboard.png
+      - test-evidence/qa-02-child-detail.png
+      - test-evidence/qa-03-meal-parsed.png
+
+      ## Issues Found
+      [List any FAIL results with detail. Write "None" if all passed.]
+
+      ## Auth Status
+      [Copy AUTH line from navigation_result]
+
+      After writing the file, return the full Markdown content.
+    output: "qa_report"

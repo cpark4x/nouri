@@ -60,7 +60,7 @@ context:
   state_file:             "/Users/chrispark/Projects/nouri/.dev-machine/STATE.yaml"
   context_transfer_file:  "/Users/chrispark/Projects/nouri/.dev-machine/CONTEXT-TRANSFER.md"
   instructions_file:      "/Users/chrispark/Projects/nouri/.dev-machine/working-session-instructions.md"
-  architecture_file:      "/Users/chrispark/Projects/nouri/docs/architecture.md"
+  architecture_file:      "/Users/chrispark/Projects/nouri/specs/architecture.md"
   specs_dir:              "/Users/chrispark/Projects/nouri/specs/features/phase1"
 
 steps:
