@@ -1,4 +1,5 @@
 import KitchenCalibration from "@/components/settings/kitchen-calibration";
+import InvitePartner from "@/components/settings/invite-partner";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 
 export default function SettingsPage() {
@@ -10,6 +11,9 @@ export default function SettingsPage() {
 
       {/* Kitchen calibration */}
       <KitchenCalibration />
+
+      {/* Invite partner */}
+      <InvitePartner />
 
       {/* Account */}
       <section className="space-y-4">

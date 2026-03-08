@@ -18,6 +18,19 @@ model Family {
   recipes      Recipe[]
   kitchenItems KitchenItem[]
   chatMessages ChatMessage[]
+  invites      FamilyInvite[]
+}
+
+model FamilyInvite {
+  id           String    @id @default(cuid())
+  token        String    @unique @default(cuid())
+  familyId     String
+  invitedEmail String?   // optional — pre-fills the registration form
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime  // createdAt + 48h
+  usedAt       DateTime? // null until redeemed
+
+  family Family @relation(fields: [familyId], references: [id])
 }
 
 model User {
