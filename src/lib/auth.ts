@@ -2,6 +2,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { NextAuthOptions } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 
 export const authOptions: NextAuthOptions = {
@@ -13,6 +14,32 @@ export const authOptions: NextAuthOptions = {
     GitHubProvider({
       clientId: process.env.GITHUB_ID ?? "",
       clientSecret: process.env.GITHUB_SECRET ?? "",
+    }),
+    CredentialsProvider({
+      name: "Email",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+          include: { family: true },
+        });
+        if (!user?.passwordHash) return null; // OAuth-only user
+        const valid = await bcrypt.compare(
+          credentials.password,
+          user.passwordHash,
+        );
+        if (!valid) return null;
+        return {
+          id: user.id,
+          email: user.email ?? "",
+          name: user.name,
+          familyId: user.familyId,
+        };
+      },
     }),
     ...(process.env.NODE_ENV === "development"
       ? [

@@ -26,6 +26,7 @@ model User {
   emailVerified DateTime?
   name          String?
   image         String?
+  passwordHash  String?   // null for OAuth-only users
   familyId      String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
