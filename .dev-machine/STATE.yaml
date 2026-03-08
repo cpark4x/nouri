@@ -14,8 +14,54 @@ specs:
   directory: /Users/chrispark/Projects/nouri/specs
   architecture: /Users/chrispark/Projects/nouri/specs/architecture.md
   features:
-    # b6 (image editing bug) is BLOCKED — needs clarification from Chris on which flow is broken
-    # All Phase 1 specs are now shipped!
+    phase2:
+      - id: c1
+        file: specs/features/phase2/c1-auth-credentials.md
+        title: "Email + Password Authentication"
+        status: ready
+        priority: HIGH
+        depends_on: []
+      - id: c2
+        file: specs/features/phase2/c2-google-oauth.md
+        title: "Google OAuth Sign-In"
+        status: ready
+        priority: HIGH
+        depends_on: [c1]
+      - id: c3
+        file: specs/features/phase2/c3-family-invite.md
+        title: "Family Invite (Wife Onboarding)"
+        status: ready
+        priority: HIGH
+        depends_on: [c1]
+      - id: c4
+        file: specs/features/phase2/c4-kid-profile-selection.md
+        title: "Kid Profile Selection (Home Screen Shift)"
+        status: ready
+        priority: HIGH
+        depends_on: [c6]  # needs points + streak fields from c6
+      - id: c5
+        file: specs/features/phase2/c5-pwa.md
+        title: "PWA & Home Screen Installation"
+        status: ready
+        priority: MEDIUM
+        depends_on: []  # additive — build last
+      - id: c6
+        file: specs/features/phase2/c6-gamification.md
+        title: "Gamification (Points, Badges, Milestone Goals)"
+        status: ready
+        priority: HIGH
+        depends_on: [c1]
+    phase1:
+      # All Phase 1 specs are now shipped!
+      # b6 (image editing bug) is BLOCKED — needs clarification from Chris on which flow is broken
+
+  build_order_phase2:
+    - "C1 — Email/password auth (foundational, everything else depends on real users)"
+    - "C6 — Gamification schema + logic (C4 displays points/streak from C6)"
+    - "C2 — Google OAuth (builds on C1 auth.ts)"
+    - "C3 — Family invite (builds on C1 registration flow)"
+    - "C4 — Kid profile selection home screen (needs C6 schema for points/streak display)"
+    - "C5 — PWA (last — cosmetic layer on top of working app)"
 
 commands:
   build: npm run build

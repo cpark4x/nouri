@@ -5,6 +5,40 @@ Each session prepends an entry here before exiting.
 
 ---
 
+## Session: phase2-spec-writing — 2026-03-07
+
+### What Was Done
+
+Wrote all 6 Phase 2 feature specs. All specs are in `specs/features/phase2/`.
+
+**Specs created:**
+- `c1-auth-credentials.md` — Email + password registration and sign-in (adds `CredentialsProvider`, bcrypt, `/auth/register` page and API)
+- `c2-google-oauth.md` — Google OAuth third sign-in option (adds `GoogleProvider` to auth.ts, Google button on sign-in page)
+- `c3-family-invite.md` — Family invite / wife onboarding (new `FamilyInvite` schema model, invite token generation + redemption flow, settings UI)
+- `c4-kid-profile-selection.md` — Home screen shift to kid-centric cards (points badge, streak, nutrition bar, Log a Meal CTA on each card)
+- `c5-pwa.md` — PWA installability via `next-pwa` (manifest.json, service worker, iOS/Android install nudge banner, offline support)
+- `c6-gamification.md` — Points, achievement badges, milestone goals (new schema: `Achievement`, `ChildAchievement`, `MilestoneGoal`, `points` on Child; synchronous within meal-save transaction; 12 seeded badge types; celebration overlay)
+
+**STATE.yaml updated:**
+- Added `phase2` spec listing with all 6 specs, statuses, priorities, and dependencies
+- Added `build_order_phase2` recommended implementation sequence: C1 → C6 → C2 → C3 → C4 → C5
+
+### Decisions Made
+
+- **C4 depends on C6** — kid cards display `points` and `streak` which come from C6's schema changes. Spec notes they can be built with placeholder `0` values and updated once C6 ships.
+- **C5 builds last** — PWA is a cosmetic/delivery layer. No feature depends on it. Build after the product actually works for the household.
+- **C6 error handling** — gamification logic is wrapped in try/catch within the meal-save transaction. Achievement/points failures must never block the meal save.
+- **12 seeded badge types** — defined the full badge set in C6 spec (the design doc left "10–15 examples" open). Keys: `first-meal`, `meals-5`, `meals-25`, `meals-100`, `streak-3`, `streak-7`, `streak-30`, `protein-goal-5`, `calories-goal-day`, `family-meal`, `variety-5`, `early-bird`.
+
+### Handoff Notes
+
+- **Next action:** Run health gates (lint/test/build) — no code was changed this session, but confirm baseline is still green before starting C1 implementation.
+- **Recommended build order:** C1 → C6 → C2 → C3 → C4 → C5. C1 is the foundational blocker — everything else requires real user accounts.
+- All Phase 2 specs are written and `ready`. No spec requires a design decision before implementation can begin.
+- **Open question from design doc still unresolved:** Badge set is now fully defined in C6 spec. The only remaining open question is B6 (image editing bug) — still blocked pending Chris clarification.
+
+---
+
 ## Session: b8-ingredient-constraints — 2026-03-07
 
 ### What Was Done
