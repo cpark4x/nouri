@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChildCard } from "@/components/dashboard/child-card";
 import { KidSelectHeader } from "@/components/dashboard/kid-select-header";
+import { InstallBanner } from "@/components/pwa/install-banner";
 import {
   subDays,
   addDays,
@@ -87,6 +88,7 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
+      <InstallBanner />
       {/* ── Primary: kid selection ── */}
       <KidSelectHeader />
 

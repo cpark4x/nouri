@@ -14,6 +14,11 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Git worktrees — generated .next/ type files must not be linted
     ".worktrees/**",
+    // next-pwa generates these service-worker bundles into public/ at build time
+    "public/sw.js",
+    "public/sw.js.map",
+    "public/workbox-*.js",
+    "public/workbox-*.js.map",
   ]),
 ]);
 
