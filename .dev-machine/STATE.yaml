@@ -18,39 +18,45 @@ specs:
       - id: c1
         file: specs/features/phase2/c1-auth-credentials.md
         title: "Email + Password Authentication"
-        status: ready
+        status: shipped
+        commit: 581f97a
         priority: HIGH
         depends_on: []
+      - id: c6
+        file: specs/features/phase2/c6-gamification.md
+        title: "Gamification (Points, Badges, Milestone Goals)"
+        status: shipped
+        commit: b44df7b
+        priority: HIGH
+        depends_on: [c1]
       - id: c2
         file: specs/features/phase2/c2-google-oauth.md
         title: "Google OAuth Sign-In"
-        status: ready
+        status: shipped
+        commit: 28fc213
         priority: HIGH
         depends_on: [c1]
       - id: c3
         file: specs/features/phase2/c3-family-invite.md
         title: "Family Invite (Wife Onboarding)"
-        status: ready
+        status: shipped
+        commit: 49aac1e
         priority: HIGH
         depends_on: [c1]
       - id: c4
         file: specs/features/phase2/c4-kid-profile-selection.md
         title: "Kid Profile Selection (Home Screen Shift)"
-        status: ready
+        status: shipped
+        commit: 59375fe
         priority: HIGH
-        depends_on: [c6]  # needs points + streak fields from c6
+        depends_on: [c6]
       - id: c5
         file: specs/features/phase2/c5-pwa.md
         title: "PWA & Home Screen Installation"
-        status: ready
+        status: shipped
+        commit: 6b91521
         priority: MEDIUM
-        depends_on: []  # additive — build last
-      - id: c6
-        file: specs/features/phase2/c6-gamification.md
-        title: "Gamification (Points, Badges, Milestone Goals)"
-        status: ready
-        priority: HIGH
-        depends_on: [c1]
+        depends_on: []
     phase1:
       # All Phase 1 specs are now shipped!
       # b6 (image editing bug) is BLOCKED — needs clarification from Chris on which flow is broken
@@ -70,23 +76,41 @@ commands:
   e2e: "# N/A — no Playwright suite configured"
 
 health_gates:
-  last_checked: "2026-03-07"
+  last_checked: "2026-03-08"
   overall: PASS
   gates:
     - id: lint
       status: PASS
-      detail: "exit code 0; warnings on <img> usage (acceptable); pre-existing warnings only"
+      detail: "exit code 0; 10 pre-existing warnings only (img element, no new errors)"
     - id: test
       status: PASS
-      detail: "12 files, 94 tests, 0 failures"
+      detail: "18 files, 144 passed, 1 skipped (Google env var — expected), 0 failures"
     - id: build
       status: PASS
-      detail: "37 routes compiled, zero TypeScript errors"
+      detail: "all routes compiled with webpack (next-pwa requires --webpack flag), zero TypeScript errors; service worker emitted to public/"
     - id: e2e
       status: N/A
       detail: "No Playwright suite configured yet"
 
 recently_shipped:
+  - ref: "6b91521"
+    title: "C5: PWA & Home Screen Installation"
+    tests_added: 0  # manual verification only per spec
+  - ref: "59375fe"
+    title: "C4: Kid Profile Selection Home Screen"
+    tests_added: 8  # streak calculation tests
+  - ref: "49aac1e"
+    title: "C3: Family Invite (Wife Onboarding)"
+    tests_added: 13  # invite token lifecycle tests
+  - ref: "28fc213"
+    title: "C2: Google OAuth Sign-In"
+    tests_added: 2  # provider presence + env var (skipped in CI)
+  - ref: "b44df7b"
+    title: "C6: Gamification (Points, Badges, Milestones)"
+    tests_added: 18  # points calc + achievement checks
+  - ref: "581f97a"
+    title: "C1: Email + Password Authentication"
+    tests_added: 10  # register logic tests
   - ref: "3e6aad7"
     title: "B8: Food Ingredient Constraints"
     files:

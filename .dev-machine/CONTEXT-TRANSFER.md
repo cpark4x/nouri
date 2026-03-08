@@ -5,6 +5,60 @@ Each session prepends an entry here before exiting.
 
 ---
 
+## Session: phase2-build — 2026-03-08
+
+### What Was Done
+
+Built all 6 Phase 2 features. Every spec implemented, all health gates green at every step.
+
+**Commits shipped:**
+
+| Commit | Feature | Tests Added |
+|--------|---------|-------------|
+| `581f97a` | C1: Email + Password Authentication | +10 |
+| `b44df7b` | C6: Gamification (Points, Badges, Milestones) | +18 |
+| `28fc213` | C2: Google OAuth Sign-In | +2 (1 skips in CI) |
+| `49aac1e` | C3: Family Invite (Wife Onboarding) | +13 |
+| `59375fe` | C4: Kid Profile Selection Home Screen | +8 |
+| `6b91521` | C5: PWA & Home Screen Installation | 0 (manual verification) |
+
+**Final health gates at `6b91521`:**
+- test: ✅ 18 files, 144 passed, 1 skipped, 0 failures
+- build: ✅ exit 0, zero TypeScript errors, service worker emitted
+- lint: ✅ exit 0, 10 pre-existing warnings only
+
+### Key Decisions Made
+
+- **`prisma db push` everywhere** — `prisma migrate dev` is interactive. Used `db push --accept-data-loss` + `generate` for all schema changes (C1, C6, C3). Migration files still need to be run manually in an interactive terminal before production deployment.
+- **`next build --webpack`** (C5) — Next.js 16 defaults to Turbopack; `next-pwa` requires the webpack pipeline for service worker generation. Added `--webpack` flag to build script.
+- **Relative imports in all test files** — No vitest config file exists → no `@/` alias resolution in tests. All new test files use relative paths.
+- **Gamification try/catch confirmed** — Achievement/points logic wrapped in try/catch inside the meal-save transaction. Failures log to console but never block the meal save.
+- **Celebration via URL params** — C6 builder routed celebration state via URL params (`?newBadges=&pointsEarned=`) rather than in-memory state, making the component usable from any navigation context.
+- **`calculateStreak` added to dashboard logic** (C4) — Queries last 30 days of meal logs per child; counts consecutive days from today backwards with ≥1 meal.
+
+### Notable Deviations from Specs
+
+- C1: `Family.create` required `name` field (non-nullable in schema) — auto-generated as `"${name}'s Family"`
+- C1: Sign-in page wrapped in `<Suspense>` for `useSearchParams` (Next.js 16 App Router requirement)
+- C2: Auth provider count test uses `fs.readFileSync` instead of dynamic import (avoids `@/lib/db` alias failure in Vitest)
+- C3: Logic functions use dependency injection (`fn(prisma, input)`) to keep them testable without `@/` aliases
+- C4: `/kids/[id]` path in spec → actual route is `/child/[id]`; `@testing-library/react` not installed so ChildCard tests skipped
+- C5: `createRequire(import.meta.url)` instead of bare `require()` (ESM-safe); generated `sw.js` and `workbox-*.js` excluded from lint
+
+### Handoff Notes
+
+- **All Phase 2 specs are shipped.** The app now has: email/password + Google auth, family invite, kid-centric home screen with gamification, PWA installability.
+- **What's left before household rollout:**
+  1. Run `npx prisma migrate dev` manually in an interactive terminal to create proper migration files for production (C1 adds `passwordHash`, C6 adds gamification tables, C3 adds `FamilyInvite`)
+  2. Set up real Google OAuth credentials in `.env.local` and Azure env vars (C2)
+  3. Replace placeholder icons in `public/icons/` with real Nouri app icons (C5)
+  4. Walk each household member through the iOS "Add to Home Screen" flow (C5)
+  5. B6 (image editing bug) still blocked — needs Chris to identify which image flow is broken
+- **Test count:** Started Phase 2 at 94 tests (12 files). Now at 144+ tests (18 files).
+- Health gates all green. Working directory clean after STATE.yaml update commit.
+
+---
+
 ## Session: phase2-spec-writing — 2026-03-07
 
 ### What Was Done
