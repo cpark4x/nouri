@@ -1,5 +1,5 @@
 /**
- * Pure date utility functions for dashboard day navigation.
+ * Pure date utility functions for dashboard day navigation and streak calculation.
  * No external dependencies — all functions are trivially testable.
  */
 
@@ -118,4 +118,50 @@ export function formatDateLabel(date: Date): string {
   if (isSameDay(date, new Date())) return "Today";
   if (isYesterday(date)) return "Yesterday";
   return `${MONTH_NAMES[date.getMonth()]} ${date.getDate()}`;
+}
+
+// ---------------------------------------------------------------------------
+// Streak calculation — used by API route
+// ---------------------------------------------------------------------------
+
+/**
+ * Count consecutive days (from today backwards) that have ≥1 meal logged.
+ * Stops at the first day with no meals; looks back at most 30 days.
+ *
+ * @param mealLogDates - The `date` field from each MealLog record (UTC Date objects)
+ * @param today        - Override for "today"; defaults to `new Date()`. Useful for testing.
+ * @returns Number of consecutive days ending today that have at least one meal.
+ *
+ * @example
+ *   // Today + yesterday have meals → streak is 2
+ *   calculateStreak([new Date(), subDays(new Date(), 1)]) // 2
+ */
+export function calculateStreak(mealLogDates: Date[], today?: Date): number {
+  const now = today ?? new Date();
+  // Anchor to midnight UTC so comparisons are day-aligned
+  const todayStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+
+  // Build a set of "Y-M-D" UTC keys for every day that has at least one meal
+  const daysWithMeals = new Set(
+    mealLogDates.map(
+      (d) => `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`
+    )
+  );
+
+  let streak = 0;
+  let cursor = todayStart;
+
+  for (let i = 0; i < 30; i++) {
+    const key = `${cursor.getUTCFullYear()}-${cursor.getUTCMonth()}-${cursor.getUTCDate()}`;
+    if (daysWithMeals.has(key)) {
+      streak++;
+      cursor = new Date(cursor.getTime() - 86_400_000); // step back one day
+    } else {
+      break; // gap found — streak ends
+    }
+  }
+
+  return streak;
 }

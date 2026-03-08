@@ -3,7 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ALLOWED_MEAL_TYPES } from "@/app/api/log/save/normalize-meal-type";
-import { parseDateParam, buildDateWindow } from "./logic";
+import {
+  parseDateParam,
+  buildDateWindow,
+  calculateStreak,
+} from "./logic";
 
 function calculateAge(dateOfBirth: Date): number {
   const today = new Date();
@@ -36,6 +40,10 @@ export async function GET(request: Request) {
   const targetDate = parseDateParam(dateParam);
   const { start, end } = buildDateWindow(targetDate);
 
+  // Expand the lookback window to 30 days for streak calculation.
+  // Today's meals are filtered in code; the extra days only provide dates.
+  const thirtyDaysAgo = new Date(start.getTime() - 29 * 86_400_000);
+
   let children;
   try {
     children = await prisma.child.findMany({
@@ -45,7 +53,7 @@ export async function GET(request: Request) {
         mealLogs: {
           where: {
             date: {
-              gte: start,
+              gte: thirtyDaysAgo,
               lt: end,
             },
           },
@@ -67,9 +75,14 @@ export async function GET(request: Request) {
       targets[dt.nutrient] = { target: dt.target, unit: dt.unit };
     }
 
-    // Aggregate today's nutrient intake across all meals
+    // Filter to the requested date for nutrition display
+    const todayMealLogs = child.mealLogs.filter(
+      (m) => m.date >= start && m.date < end
+    );
+
+    // Aggregate the requested day's nutrient intake across all meals
     const todayIntake: Record<string, { amount: number; unit: string }> = {};
-    for (const meal of child.mealLogs) {
+    for (const meal of todayMealLogs) {
       for (const entry of meal.nutrients) {
         if (todayIntake[entry.nutrient]) {
           todayIntake[entry.nutrient].amount += entry.amount;
@@ -82,12 +95,12 @@ export async function GET(request: Request) {
       }
     }
 
-    // Build meal status
+    // Build meal status from the requested day
     const loggedMealTypes = new Set(
-      child.mealLogs.map((m) => m.mealType.toLowerCase())
+      todayMealLogs.map((m) => m.mealType.toLowerCase())
     );
     const todayMeals = ALLOWED_MEAL_TYPES.map((mealType) => {
-      const log = child.mealLogs.find(
+      const log = todayMealLogs.find(
         (m) => m.mealType.toLowerCase() === mealType
       );
       return {
@@ -97,11 +110,23 @@ export async function GET(request: Request) {
       };
     });
 
+    // Gamification — points from DB, streak computed from last 30 days of logs
+    const points = child.points;
+    const streak = calculateStreak(child.mealLogs.map((m) => m.date));
+
+    // Convenience calorie fields for the calories progress bar
+    const todayCalories = todayIntake["calories"]?.amount ?? 0;
+    const todayCaloriesTarget = targets["calories"]?.target ?? 0;
+
     return {
       id: child.id,
       name: child.name,
       age: calculateAge(child.dateOfBirth),
       photoUrl: child.photoUrl,
+      points,
+      streak,
+      todayCalories,
+      todayCaloriesTarget,
       targets,
       todayIntake,
       todayMeals,
