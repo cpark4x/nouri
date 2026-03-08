@@ -113,6 +113,95 @@ async function main() {
     },
   });
   console.log("Created dev user: dev@nouri.app");
+
+  // 6. Seed Achievement badge definitions (upsert — idempotent)
+  const achievements = [
+    {
+      key: "first-meal",
+      name: "First Bite",
+      description: "Log your first meal",
+      iconRef: "🥗",
+    },
+    {
+      key: "meals-5",
+      name: "Five and Counting",
+      description: "Log 5 meals",
+      iconRef: "⭐",
+    },
+    {
+      key: "meals-25",
+      name: "On a Roll",
+      description: "Log 25 meals",
+      iconRef: "🎯",
+    },
+    {
+      key: "meals-100",
+      name: "Century",
+      description: "Log 100 meals",
+      iconRef: "🏆",
+    },
+    {
+      key: "streak-3",
+      name: "3-Day Streak",
+      description: "Log meals 3 days in a row",
+      iconRef: "🔥",
+    },
+    {
+      key: "streak-7",
+      name: "Week Warrior",
+      description: "Log meals 7 days in a row",
+      iconRef: "🔥🔥",
+    },
+    {
+      key: "streak-30",
+      name: "Habit Locked",
+      description: "Log meals 30 days in a row",
+      iconRef: "💪",
+    },
+    {
+      key: "protein-goal-5",
+      name: "Protein Pro",
+      description: "Hit your protein goal 5 days in a row",
+      iconRef: "💪",
+    },
+    {
+      key: "calories-goal-day",
+      name: "Balanced Day",
+      description: "Hit your calorie goal today",
+      iconRef: "✅",
+    },
+    {
+      key: "family-meal",
+      name: "Family Table",
+      description: "Both kids logged a meal on the same day",
+      iconRef: "🍽️",
+    },
+    {
+      key: "variety-5",
+      name: "Foodie",
+      description: "Log 5 different meals in a single day",
+      iconRef: "🌈",
+    },
+    {
+      key: "early-bird",
+      name: "Early Bird",
+      description: "Log breakfast before 9am",
+      iconRef: "🌅",
+    },
+  ];
+
+  for (const achievement of achievements) {
+    await prisma.achievement.upsert({
+      where: { key: achievement.key },
+      update: {
+        name: achievement.name,
+        description: achievement.description,
+        iconRef: achievement.iconRef,
+      },
+      create: achievement,
+    });
+  }
+  console.log(`Seeded ${achievements.length} achievement badges`);
 }
 
 main()

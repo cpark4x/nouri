@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { NutrientDetail } from "@/components/dashboard/nutrient-detail";
 import { MealList } from "@/components/dashboard/meal-list";
@@ -21,6 +21,8 @@ import {
   toDateParam,
   formatDateLabel,
 } from "@/app/api/dashboard/logic";
+import { CelebrationOverlay } from "@/components/gamification/celebration";
+import { MilestoneForm } from "@/components/gamification/milestone-form";
 
 interface ChildDetail {
   id: string;
@@ -53,6 +55,36 @@ interface WeeklyData {
   days: DayData[];
   weeklyAverages: Record<string, number>;
   weeklyAveragePercent: Record<string, number>;
+}
+
+interface AchievementRow {
+  key: string;
+  name: string;
+  description: string;
+  iconRef: string;
+  earned: boolean;
+  earnedAt: string | null;
+}
+
+interface MilestoneGoalRow {
+  id: string;
+  description: string;
+  targetCount: number;
+  currentCount: number;
+  completedAt: string | null;
+  createdByName: string;
+}
+
+interface GamificationData {
+  points: number;
+  achievements: AchievementRow[];
+  milestoneGoals: MilestoneGoalRow[];
+}
+
+interface CelebrationState {
+  badges: string[];
+  milestones: string[];
+  pointsEarned: number;
 }
 
 const MORE_NUTRIENTS: { key: string; label: string }[] = [
@@ -130,8 +162,75 @@ function WeeklyLoadingSpinner() {
   );
 }
 
+/** Single achievement tile: colored when earned, greyed when not. */
+function AchievementTile({ badge }: { badge: AchievementRow }) {
+  return (
+    <div
+      title={badge.description}
+      className={`flex flex-col items-center gap-1 rounded-xl px-3 py-3 text-center transition-opacity ${
+        badge.earned
+          ? "bg-amber-50 shadow-sm"
+          : "bg-gray-50 opacity-40 grayscale"
+      }`}
+    >
+      <span className="text-2xl leading-none">{badge.iconRef}</span>
+      <span
+        className={`text-xs font-medium leading-tight ${
+          badge.earned ? "text-amber-800" : "text-gray-500"
+        }`}
+      >
+        {badge.name}
+      </span>
+    </div>
+  );
+}
+
+/** Milestone goal row with progress bar. */
+function MilestoneGoalCard({ goal }: { goal: MilestoneGoalRow }) {
+  const pct = Math.min(
+    100,
+    Math.round((goal.currentCount / goal.targetCount) * 100),
+  );
+  const isComplete = goal.completedAt !== null;
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <p className="text-sm font-medium text-gray-900">{goal.description}</p>
+        {isComplete && (
+          <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+            Done ✓
+          </span>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      <div className="mb-1.5 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+        <div
+          className={`h-full rounded-full transition-all ${
+            isComplete ? "bg-green-500" : "bg-blue-500"
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-gray-500">
+          {goal.currentCount}/{goal.targetCount}
+        </span>
+        <span className="text-xs text-gray-400">
+          Set by {goal.createdByName} · {pct}% complete
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function ChildDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [child, setChild] = useState<ChildDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -155,6 +254,50 @@ export default function ChildDetailPage() {
 
   // Collapsible "How targets are set" section
   const [showTargetSources, setShowTargetSources] = useState(false);
+
+  // Gamification state
+  const [gamification, setGamification] = useState<GamificationData | null>(null);
+  const [gamificationLoading, setGamificationLoading] = useState(false);
+
+  // Celebration overlay (triggered by URL params after meal save)
+  const [celebration, setCelebration] = useState<CelebrationState | null>(null);
+
+  // Check URL params for celebration data (set by log page after save)
+  useEffect(() => {
+    const badges = searchParams.get("newBadges");
+    const milestones = searchParams.get("completedMilestones");
+    const points = searchParams.get("pointsEarned");
+
+    if (badges || milestones || points) {
+      setCelebration({
+        badges: badges ? badges.split(",").filter(Boolean) : [],
+        milestones: milestones ? milestones.split("|").filter(Boolean) : [],
+        pointsEarned: points ? parseInt(points, 10) : 0,
+      });
+
+      // Clear gamification params from URL without navigation
+      const url = new URL(window.location.href);
+      url.searchParams.delete("newBadges");
+      url.searchParams.delete("completedMilestones");
+      url.searchParams.delete("pointsEarned");
+      router.replace(url.pathname + url.search, { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  const fetchGamification = useCallback(async () => {
+    setGamificationLoading(true);
+    try {
+      const res = await fetch(`/api/child/${id}/gamification`);
+      if (res.ok) {
+        const data = await res.json();
+        setGamification(data as GamificationData);
+      }
+    } catch {
+      // Non-blocking: gamification data failing shouldn't break the page
+    } finally {
+      setGamificationLoading(false);
+    }
+  }, [id]);
 
   // Fetch the selected day's data; re-runs when id or selectedDate changes
   useEffect(() => {
@@ -182,6 +325,11 @@ export default function ChildDetailPage() {
     }
     fetchChild();
   }, [id, selectedDate]);
+
+  // Fetch gamification data once on mount
+  useEffect(() => {
+    fetchGamification();
+  }, [fetchGamification]);
 
   // Lazy-fetch weekly data when the "This Week" tab is first activated
   useEffect(() => {
@@ -251,8 +399,27 @@ export default function ChildDetailPage() {
     ? "Today's Meals"
     : `Meals — ${dateLabel}`;
 
+  const earnedCount =
+    gamification?.achievements.filter((a) => a.earned).length ?? 0;
+  const activeGoals =
+    gamification?.milestoneGoals.filter((g) => !g.completedAt) ?? [];
+  const completedGoals =
+    gamification?.milestoneGoals.filter((g) => g.completedAt) ?? [];
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
+      {/* Celebration overlay — triggered by URL params after meal save */}
+      {celebration &&
+        (celebration.badges.length > 0 ||
+          celebration.milestones.length > 0) && (
+          <CelebrationOverlay
+            badges={celebration.badges}
+            milestones={celebration.milestones}
+            pointsEarned={celebration.pointsEarned}
+            onDismiss={() => setCelebration(null)}
+          />
+        )}
+
       {/* Navigation */}
       <div className="mb-6 flex items-center justify-between">
         <Link
@@ -298,6 +465,13 @@ export default function ChildDetailPage() {
             <p className="mt-1 text-sm text-gray-500">
               Goal: {child.goals}
             </p>
+          )}
+
+          {/* Points badge */}
+          {gamification !== null && (
+            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+              ⭐ {gamification.points.toLocaleString()} pts
+            </span>
           )}
         </div>
       </div>
@@ -442,11 +616,90 @@ export default function ChildDetailPage() {
           })()}
 
           {/* Meals Section */}
-          <section>
+          <section className="mb-8">
             <h3 className="mb-3 text-sm font-semibold text-gray-900">
               {mealsHeading}
             </h3>
             <MealList meals={child.todayMeals} />
+          </section>
+
+          {/* ─── Achievements Section ───────────────────────────────────────── */}
+          <section className="mb-8">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">
+                Achievements
+              </h3>
+              {gamification && (
+                <span className="text-xs text-gray-400">
+                  {earnedCount}/{gamification.achievements.length} earned
+                </span>
+              )}
+            </div>
+
+            {gamificationLoading && !gamification && (
+              <div className="flex justify-center py-6">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600" />
+              </div>
+            )}
+
+            {gamification && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {gamification.achievements.map((badge) => (
+                  <AchievementTile key={badge.key} badge={badge} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ─── Milestone Goals Section ────────────────────────────────────── */}
+          <section className="mb-4">
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">Goals</h3>
+
+            {gamificationLoading && !gamification && (
+              <div className="flex justify-center py-4">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600" />
+              </div>
+            )}
+
+            {gamification && (
+              <>
+                {activeGoals.length === 0 && completedGoals.length === 0 && (
+                  <p className="mb-3 text-sm text-gray-400">
+                    No goals set yet.
+                  </p>
+                )}
+
+                {/* Active goals */}
+                {activeGoals.length > 0 && (
+                  <div className="mb-3 space-y-2">
+                    {activeGoals.map((goal) => (
+                      <MilestoneGoalCard key={goal.id} goal={goal} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Completed goals (collapsible) */}
+                {completedGoals.length > 0 && (
+                  <details className="mb-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2 text-sm text-gray-500">
+                    <summary className="cursor-pointer select-none py-1 font-medium">
+                      {completedGoals.length} completed goal
+                      {completedGoals.length !== 1 ? "s" : ""}
+                    </summary>
+                    <div className="mt-2 space-y-2">
+                      {completedGoals.map((goal) => (
+                        <MilestoneGoalCard key={goal.id} goal={goal} />
+                      ))}
+                    </div>
+                  </details>
+                )}
+
+                {/* Parent form to add a new goal */}
+                <MilestoneForm
+                  childId={child.id}
+                  onCreated={fetchGamification}
+                />
+              </>
+            )}
           </section>
         </div>
       )}

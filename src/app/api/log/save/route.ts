@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import type { ParsedMeal, NutritionEstimate } from "@/lib/ai/types";
 import { normalizeMealType } from "./normalize-meal-type";
+import { calculatePoints } from "@/lib/gamification/points";
+import { checkAchievements } from "@/lib/gamification/achievements";
 
 type NutrientKey = keyof NutritionEstimate;
 
@@ -25,6 +27,37 @@ const NUTRIENT_UNITS: Record<NutrientKey, string> = {
   fiber: "g",
   omega3: "mg",
 };
+
+/** Returns true when the child has logged meals on ≥7 consecutive days ending today. */
+async function checkStreakActive(
+  childId: string,
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+): Promise<boolean> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 7);
+
+  const logs = await tx.mealLog.findMany({
+    where: { childId, date: { gte: cutoff } },
+    select: { date: true },
+  });
+
+  const daysWithMeals = new Set(
+    logs.map((l) => l.date.toISOString().split("T")[0]),
+  );
+
+  let streak = 0;
+  const cursor = new Date();
+  for (let i = 0; i < 7; i++) {
+    const key = cursor.toISOString().split("T")[0];
+    if (daysWithMeals.has(key)) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak >= 7;
+}
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -99,7 +132,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Verify child belongs to family
+  // Verify child belongs to family (outside transaction — fast auth check)
   let child;
   try {
     child = await prisma.child.findUnique({ where: { id: childId } });
@@ -123,28 +156,122 @@ export async function POST(request: Request) {
       unit: NUTRIENT_UNITS[key],
     }));
 
-  // Create MealLog with nested NutritionEntry records
-  let mealLog;
+  // Run meal save + gamification in a single transaction
+  let result: {
+    mealId: string;
+    pointsDelta: number;
+    newBadgeKeys: string[];
+    completedMilestones: string[];
+  };
+
   try {
-    mealLog = await prisma.mealLog.create({
-      data: {
-        childId,
-        mealType,
-        description: trimmedDescription,
-        title,
-        photoUrl: photoUrl ?? null,
-        confidence: parsedMeal.confidence,
-        // Serialize to a plain object — ParsedMeal contains typed interfaces
-        // that Prisma's InputJsonValue doesn't accept directly without a cast.
-        aiAnalysis: JSON.parse(JSON.stringify(parsedMeal)) as object,
-        nutrients: {
-          create: nutritionData,
+    result = await prisma.$transaction(async (tx) => {
+      // 1. Save MealLog with nested NutritionEntry records
+      const meal = await tx.mealLog.create({
+        data: {
+          childId,
+          mealType,
+          description: trimmedDescription,
+          title,
+          photoUrl: photoUrl ?? null,
+          confidence: parsedMeal.confidence,
+          aiAnalysis: JSON.parse(JSON.stringify(parsedMeal)) as object,
+          nutrients: {
+            create: nutritionData,
+          },
         },
-      },
+      });
+
+      // 2. Gamification — wrapped in try/catch; must NOT block the meal save
+      let pointsDelta = 0;
+      let newBadgeKeys: string[] = [];
+      const completedMilestones: string[] = [];
+
+      try {
+        const currentChild = await tx.child.findUniqueOrThrow({
+          where: { id: childId },
+        });
+        const dailyTargets = await tx.dailyTarget.findMany({
+          where: { childId },
+        });
+        const calorieTarget =
+          dailyTargets.find((t) => t.nutrient === "calories")?.target ?? 0;
+        const hasActiveStreak = await checkStreakActive(childId, tx);
+
+        // Points calculation
+        const points = calculatePoints({
+          meal: {
+            nutritionData: {
+              calories: parsedMeal.totalNutrition.calories ?? 0,
+            },
+          },
+          child: {
+            points: currentChild.points,
+            todayMealCount: 1,
+          },
+          dailyTargets: { calories: calorieTarget },
+          hasActiveStreak,
+        });
+        pointsDelta = points.total;
+
+        await tx.child.update({
+          where: { id: childId },
+          data: { points: { increment: pointsDelta } },
+        });
+
+        // Achievement checks
+        newBadgeKeys = await checkAchievements(childId, tx);
+        if (newBadgeKeys.length > 0) {
+          const achievements = await tx.achievement.findMany({
+            where: { key: { in: newBadgeKeys } },
+          });
+          await tx.childAchievement.createMany({
+            data: achievements.map((a) => ({
+              childId,
+              achievementId: a.id,
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        // Milestone goal progress
+        const activeGoals = await tx.milestoneGoal.findMany({
+          where: { childId, completedAt: null },
+        });
+        for (const goal of activeGoals) {
+          const newCount = goal.currentCount + 1;
+          const completed = newCount >= goal.targetCount;
+          await tx.milestoneGoal.update({
+            where: { id: goal.id },
+            data: {
+              currentCount: newCount,
+              completedAt: completed ? new Date() : null,
+            },
+          });
+          if (completed) completedMilestones.push(goal.description);
+        }
+      } catch (err) {
+        console.error("[gamification] error during meal save:", err);
+        // Do not rethrow — meal save succeeds regardless
+      }
+
+      return {
+        mealId: meal.id,
+        pointsDelta,
+        newBadgeKeys,
+        completedMilestones,
+      };
     });
   } catch {
     return NextResponse.json({ error: "Failed to save meal log" }, { status: 500 });
   }
 
-  return NextResponse.json({ id: mealLog.id });
+  return NextResponse.json({
+    id: result.mealId,
+    gamification: {
+      pointsEarned: result.pointsDelta,
+      newBadges: result.newBadgeKeys,
+      completedMilestones: result.completedMilestones,
+    },
+  });
 }
