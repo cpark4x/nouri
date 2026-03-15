@@ -56,7 +56,6 @@ Active development. Core meal logging, goal tracking, and AI suggestions are wor
 
 ## Built by
 
-**Chris Park** — Senior PM, Microsoft Office of the CTO, AI Incubation group.
-Dad of kids who need their vitamin D.
+[Chris Park](https://www.linkedin.com/in/chrispark) — Microsoft Office of the CTO, AI Incubation. Dad of kids who need their vitamin D.
 
 [LinkedIn](https://www.linkedin.com/in/chrispark1/) · [GitHub](https://github.com/cpark4x)
